@@ -1,13 +1,14 @@
 /**
-  @file Vector3.h
+  \file Vector3.h
  
   3D vector class
  
-  @maintainer Morgan McGuire, http://graphics.cs.williams.edu
+  \maintainer Morgan McGuire, http://graphics.cs.williams.edu
 
-  @created 2001-06-02
-  @edited  2009-11-01
-  Copyright 2000-2009, Morgan McGuire.
+  \created 2001-06-02
+  \edited  2010-12-25
+
+  Copyright 2000-2012, Morgan McGuire.
   All rights reserved.
  */
 
@@ -72,11 +73,19 @@ public:
     /** Initializes to zero */
     Vector3();
 
-    /** \param any Must either Vector3(#, #, #) or Vector3 {x = #, y = #, z = #}*/
-    Vector3(const Any& any);
+    /** 
+        \param any  Must either Vector3(#, #, #) or Vector3 {x = #, y = #, z = #}.
+        Because Point3 is a typedef for Vector3 in the current implementation,
+        this constructor accepts Point3(#, #, #), etc. as well.
+        
+     */
+    explicit Vector3(const Any& any);
     
+    /** Converts the Vector3 to an Any, using the specified \a name instead of "Vector3" */
+    Any toAny(const std::string& name) const;
+
     /** Converts the Vector3 to an Any. */
-    operator Any() const;
+    Any toAny() const;
 
     /** Divides by 127 */
     Vector3(const Vector4int8&);
@@ -87,14 +96,33 @@ public:
     explicit Vector3(float coordinate[3]);
     explicit Vector3(double coordinate[3]);
     Vector3(const class Vector3int16& v);
-	explicit Vector3(class TextInput& t);
+    explicit Vector3(class TextInput& t);
     explicit Vector3(const class Color3& c);
 
-	/** Format is three float32's */
+    /** The default Direct3D coordinate system is left-handed Y=up.
+       http://msdn.microsoft.com/en-us/library/bb204853(v=vs.85).aspx*/
+    static Vector3 fromDirect3D(const Vector3& d3d) {
+        return Vector3(d3d.x, d3d.y, -d3d.z);
+    }
+
+    Vector3 toDirect3D() {
+        return Vector3(x, y, -z);
+    }
+
+    /** The default Autodesk 3DS Max coordinate system is right-handed Z=up. */
+    static Vector3 from3DSMax(const Vector3& max) {
+        return Vector3(max.x, max.z, -max.y);
+    }
+
+    Vector3 to3DSMax(const Vector3& v) {
+        return Vector3(x, -z, y);
+    }
+
+    /** Format is three float32's */
     void serialize(class BinaryOutput& b) const;
     void deserialize(class BinaryInput& b);
 
-	/** Format is "(%f, %f, %f)" */
+    /** Format is "(%f, %f, %f)" */
     void serialize(class TextOutput& t) const;
     void deserialize(class TextInput& t);
 
@@ -106,6 +134,10 @@ public:
     const float& __fastcall operator[] (int i) const;
     float& operator[] (int i);
 
+    bool nonZero() const {
+        return (x != 0) || (y != 0) || (z != 0);    
+    }
+
     enum Axis {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, DETECT_AXIS=-1};
 
     /**
@@ -116,6 +148,7 @@ public:
 
     // assignment and comparison
     Vector3& __fastcall operator= (const Vector3& rkVector);
+    Vector3& operator=(const Any& a);
     bool operator== (const Vector3& rkVector) const;
     bool operator!= (const Vector3& rkVector) const;
     size_t hashCode() const;
@@ -125,11 +158,18 @@ public:
     /** Returns true if this vector has finite length. */
     bool isFinite() const;
 
+    /** True if any field is nan */
+    bool isNaN() const;
+
     /** Returns true if this vector has length ~= 0 */
     bool isZero() const;
 
     /** Returns true if this vector has length ~= 1 */
     bool isUnit() const;
+
+    /** Returns a vector that is \a this translated towards \a goal with a maximum translation of \a maxTranslation. */
+    Vector3 movedTowards(const Vector3& goal, float maxTranslation) const;
+    void moveTowards(const Vector3& goal, float maxTranslation);
     
     // arithmetic operations
     Vector3 __fastcall operator+ (const Vector3& v) const;
@@ -153,12 +193,18 @@ public:
     Vector3& __fastcall operator/= (const Vector3& v);
 
     /** Same as magnitude */
-	float length() const;
+    float length() const;
 
     float magnitude() const;
+
+    /** Raise each component of this vector to a power */
+    Vector3 pow(float p) const {
+        return Vector3(powf(x, p), powf(y, p), powf(z, p));
+    }
     
     /**
-     The result is a nan vector if the length is almost zero.
+     Returns a unit-length version of this vector.
+     Returns nan if length is almost zero.
      */
     Vector3 direction() const;
 
@@ -265,11 +311,9 @@ public:
     float squaredLength() const;
 
     float squaredMagnitude () const;
-	
+    
     float __fastcall dot(const Vector3& rkVector) const;
     
-    float unitize(float tolerance = 1e-06);
-
     /** Cross product.  Note that two cross products in a row
         can be computed more cheaply: v1 x (v2 x v3) = (v1 dot v3) v2  - (v1 dot v2) v3.
       */
@@ -314,6 +358,17 @@ public:
             G3D::clamp(y, low, high),
             G3D::clamp(z, low, high));
     }
+
+
+    inline Vector3 floor() const {
+        return G3D::Vector3(::floor(x), ::floor(y), ::floor(z));
+    }
+
+
+    inline Vector3 round() const {
+        return Vector3(G3D::round(x), G3D::round(y), G3D::round(z));
+    }
+
 
     /**
      Linear interpolation
@@ -369,14 +424,6 @@ public:
       \image html vector3-hemirandom.png
      */
     static Vector3 hemiRandom(const Vector3& normal, Random& r = Random::common());
-
-    /** Input W must be initialize to a nonzero vector, output is {U,V,W}
-        an orthonormal basis.  A hint is provided about whether or not W
-        is already unit length. 
-        @deprecated Use getTangents
-    */
-    static void generateOrthonormalBasis (Vector3& rkU, Vector3& rkV,
-                                          Vector3& rkW, bool bUnitLengthW = true);
 
     inline float sum() const {
         return x + y + z;
@@ -548,6 +595,8 @@ public:
     /** Can be passed to ignore a vector3 parameter */
     static Vector3& ignore();
 };
+
+
 
 inline G3D::Vector3 operator*(float s, const G3D::Vector3& v) {
     return v * s;
@@ -750,8 +799,7 @@ inline Vector3 Vector3::cross (const Vector3& rkVector) const {
 inline Vector3 Vector3::unitCross (const Vector3& rkVector) const {
     Vector3 kCross(y*rkVector.z - z*rkVector.y, z*rkVector.x - x*rkVector.z,
                    x*rkVector.y - y*rkVector.x);
-    kCross.unitize();
-    return kCross;
+    return kCross.direction();
 }
 
 //----------------------------------------------------------------------------
@@ -766,7 +814,7 @@ inline Vector3 Vector3::max(const Vector3 &v) const {
 
 //----------------------------------------------------------------------------
 inline bool Vector3::isZero() const {
-    return G3D::fuzzyEq(squaredMagnitude(), 0.0f);
+    return G3D::fuzzyEq(fabsf(x) + fabsf(y) + fabsf(z), 0.0f);
 }
 
 //----------------------------------------------------------------------------
@@ -774,6 +822,22 @@ inline bool Vector3::isZero() const {
 inline bool Vector3::isUnit() const {
     return G3D::fuzzyEq(squaredMagnitude(), 1.0f);
 }
+
+/** 
+ Points are technically distinct mathematical entities from vectors.
+ Actually distinguishing them at the class level tends to add lots of
+ boilerplate (e.g., (P - Point3::zero()).direction()
+ vs. P.direction()), so many programmers prefer use a single class,
+ as GLSL does.  
+
+ G3D provides this typedef as a way of documenting arguments that are
+ locations in space and not directions.  Beware that points and
+ vectors are interchangable from the compiler's point of view, and
+ that the programmer must track which is really which. */
+typedef Vector3 Point3;
+
+void serialize(const Vector3& v, class BinaryOutput& b);
+void deserialize(Vector3& v, class BinaryInput& b);
 
 } // namespace G3D
 

@@ -27,17 +27,17 @@ public:
     /**
      In host byte order
      */
-    NetAddress(uint32 host, uint16 port = 0);
+    explicit NetAddress(uint32 host, uint16 port = 0);
 
     /**
      @param port Specified in host byte order (i.e., don't worry about endian issues)
-     */
+    */
     NetAddress(const std::string& hostname, uint16 port);
 
     /**
        @param hostnameAndPort in the form "hostname:port" or "ip:port"
      */
-    NetAddress(const std::string& hostnameAndPort);
+    explicit NetAddress(const std::string& hostnameAndPort);
 
     /**
        @deprecated Use G3D::NetworkDevice::broadcastAddressArray()
@@ -95,7 +95,7 @@ namespace G3D {
  they have different IP's.
  */
 inline bool operator==(const NetAddress& a, const NetAddress& b) {
-	return (a.ip() == b.ip()) && (a.port() == b.port());
+    return (a.ip() == b.ip()) && (a.port() == b.port());
 }
 
 

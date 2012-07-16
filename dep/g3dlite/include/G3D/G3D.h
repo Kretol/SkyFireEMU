@@ -1,15 +1,15 @@
 /**
- @file G3D.h
+ \file G3D.h
 
  This header includes all of the G3D libraries in
  appropriate namespaces.
 
- @maintainer Morgan McGuire, http://graphics.cs.williams.edu
+ \maintainer Morgan McGuire, http://graphics.cs.williams.edu
 
- @created 2001-08-25
- @edited  2010-03-20
+ \created 2001-08-25
+ \edited  2012-03-16
 
- Copyright 2000-2010, Morgan McGuire.
+ Copyright 2000-2012, Morgan McGuire.
  All rights reserved.
 */
 
@@ -25,17 +25,28 @@
 #endif
 
 #include "G3D/platform.h"
+#include "G3D/Proxy.h"
+#include "G3D/BIN.h"
+#include "G3D/FileNotFound.h"
 #include "G3D/units.h"
 #include "G3D/ParseError.h"
 #include "G3D/Random.h"
+#include "G3D/Noise.h"
 #include "G3D/Array.h"
 #include "G3D/SmallArray.h"
 #include "G3D/Queue.h"
 #include "G3D/Crypto.h"
 #include "G3D/format.h"
 #include "G3D/Vector2.h"
+#include "G3D/Vector2int32.h"
+#include "G3D/Vector2int16.h"
+#include "G3D/Vector2unorm16.h"
 #include "G3D/Vector3.h"
+#include "G3D/Vector3int16.h"
+#include "G3D/Vector3int32.h"
 #include "G3D/Vector4.h"
+#include "G3D/Vector4int16.h"
+#include "G3D/Vector4int8.h"
 #include "G3D/Color1.h"
 #include "G3D/Color3.h"
 #include "G3D/Color4.h"
@@ -61,6 +72,7 @@
 #include "G3D/FileSystem.h"
 #include "G3D/Set.h"
 #include "G3D/GUniqueID.h"
+#include "G3D/RayGridIterator.h"
 #include "G3D/BinaryFormat.h"
 #include "G3D/BinaryInput.h"
 #include "G3D/BinaryOutput.h"
@@ -68,6 +80,10 @@
 #include "G3D/g3dfnmatch.h"
 #include "G3D/G3DGameUnits.h"
 #include "G3D/g3dmath.h"
+#include "G3D/unorm8.h"
+#include "G3D/unorm16.h"
+#include "G3D/snorm8.h"
+#include "G3D/snorm16.h"
 #include "G3D/uint128.h"
 #include "G3D/fileutils.h"
 #include "G3D/ReferenceCount.h"
@@ -75,14 +91,16 @@
 #include "G3D/GMutex.h"
 #include "G3D/PrecomputedRandom.h"
 #include "G3D/MemoryManager.h"
+#include "G3D/BlockPoolMemoryManager.h"
 #include "G3D/AreaMemoryManager.h"
 #include "G3D/BumpMapPreprocess.h"
+#include "G3D/CubeFace.h"
 
 template<class T> struct HashTrait< G3D::ReferenceCountedPointer<T> > {
     static size_t hashCode(G3D::ReferenceCountedPointer<T> key) { return reinterpret_cast<size_t>( key.pointer() ); }
 };
 
-#include "G3D/GImage.h"
+#include "G3D/Image.h"
 #include "G3D/CollisionDetection.h"
 #include "G3D/Intersect.h"
 #include "G3D/Log.h"
@@ -98,12 +116,10 @@ template<class T> struct HashTrait< G3D::ReferenceCountedPointer<T> > {
 #include "G3D/Capsule.h"
 #include "G3D/Cylinder.h"
 #include "G3D/Triangle.h"
-#include "G3D/Color3uint8.h"
-#include "G3D/Color4uint8.h"
-#include "G3D/Vector2int16.h"
-#include "G3D/Vector3int16.h"
-#include "G3D/Vector3int32.h"
-#include "G3D/Vector4int8.h"
+#include "G3D/Color1unorm8.h"
+#include "G3D/Color2unorm8.h"
+#include "G3D/Color3unorm8.h"
+#include "G3D/Color4unorm8.h"
 #include "G3D/ConvexPolyhedron.h"
 #include "G3D/MeshAlg.h"
 #include "G3D/vectorMath.h"
@@ -124,39 +140,62 @@ template<class T> struct HashTrait< G3D::ReferenceCountedPointer<T> > {
 #include "G3D/PointHashGrid.h"
 #include "G3D/Map2D.h"
 #include "G3D/Image1.h"
-#include "G3D/Image1uint8.h"
+#include "G3D/Image1unorm8.h"
 #include "G3D/Image3.h"
-#include "G3D/Image3uint8.h"
+#include "G3D/Image3unorm8.h"
 #include "G3D/Image4.h"
-#include "G3D/Image4uint8.h"
+#include "G3D/Image4unorm8.h"
 #include "G3D/filter.h"
 #include "G3D/WeakCache.h"
 #include "G3D/Pointer.h"
 #include "G3D/Matrix.h"
 #include "G3D/ImageFormat.h"
+#include "G3D/ImageBuffer.h"
+#include "G3D/typeutils.h"
+#include "G3D/SpeedLoad.h"
+#include "G3D/ParseMTL.h"
+#include "G3D/ParseOBJ.h"
+#include "G3D/ParsePLY.h"
+#include "G3D/Parse3DS.h"
 
 #ifdef _MSC_VER
-#   pragma comment(lib, "zlib")
-#   pragma comment(lib, "ws2_32")
 #   pragma comment(lib, "winmm")
 #   pragma comment(lib, "imagehlp")
+#   pragma comment(lib, "ws2_32")
 #   pragma comment(lib, "gdi32")
 #   pragma comment(lib, "user32")
 #   pragma comment(lib, "kernel32")
-#   pragma comment(lib, "version")
 #   pragma comment(lib, "advapi32")
-#   pragma comment(lib, "png")
-#   pragma comment(lib, "jpeg")
-#   pragma comment(lib, "zip")
+#   pragma comment(lib, "shell32")
+#   pragma comment(lib, "version")
+#   ifdef G3D_64BIT
+#       pragma comment(lib, "zlib-64")
+#       pragma comment(lib, "zip-64")
+#   else
+#       pragma comment(lib, "zlib")
+#       pragma comment(lib, "zip")
+#   endif
 #   ifdef _DEBUG
         // Don't link against G3D when building G3D itself.
 #      ifndef G3D_BUILDING_LIBRARY_DLL
-#         pragma comment(lib, "G3Dd.lib")
+#         ifdef G3D_64BIT
+#             pragma comment(lib, "G3D-64d")
+#             pragma comment(lib, "freeimage-64d")
+#         else
+#             pragma comment(lib, "G3Dd")
+#             pragma comment(lib, "freeimaged")
+#         endif
 #      endif
 #   else
         // Don't link against G3D when building G3D itself.
 #      ifndef G3D_BUILDING_LIBRARY_DLL
-#         pragma comment(lib, "G3D.lib")
+#         ifdef G3D_64BIT
+#             pragma comment(lib, "G3D-64")
+#             pragma comment(lib, "freeimage-64")
+#         else
+#             pragma comment(lib, "G3D")
+#             pragma comment(lib, "freeimage")
+#         endif
 #      endif
 #   endif
 #endif

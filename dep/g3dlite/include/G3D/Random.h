@@ -6,7 +6,7 @@
  @created 2009-01-02
  @edited  2009-03-20
 
- Copyright 2000-2009, Morgan McGuire.
+ Copyright 2000-2012, Morgan McGuire.
  All rights reserved.
  */
 #ifndef G3D_Random_h
@@ -33,6 +33,8 @@ namespace G3D {
     
     On OS X, Random is about 10x faster than drand48() (which is
     threadsafe) and 4x faster than rand() (which is not threadsafe).
+
+    \sa Noise
  */
 class Random {
 protected:
@@ -70,6 +72,23 @@ protected:
     /** For subclasses.  The void* parameter is just to distinguish this from the
         public constructor.*/
     Random(void*);
+
+
+private:
+
+    Random& operator=(const Random&) {
+        alwaysAssertM(false,
+            "There is no copy constructor or assignment operator for Random because you "
+            "probably didn't actually want to copy the state--it would "
+            "be slow and duplicate the state of a pseudo-random sequence.  Maybe you could "
+            "provide arguments to a member variable in the constructor, "
+            "or pass the Random by reference?");
+        return *this;
+    }
+
+    Random(const Random& r) {
+        *this = r;
+    }
 
 public:
 

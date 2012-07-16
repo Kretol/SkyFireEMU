@@ -1,14 +1,15 @@
 /**
- @file ImageFormat.cpp
+ \file ImageFormat.cpp
  
- @maintainer Morgan McGuire, http://graphics.cs.williams.edu
+ \maintainer Morgan McGuire, http://graphics.cs.williams.edu
  
- @created 2003-05-23
- @edited  2010-03-30
+ \created 2003-05-23
+ \edited  2012-02-26
  */
 
 #include "GLG3D/glheaders.h"
 #include "G3D/ImageFormat.h"
+#include "G3D/stringutils.h"
 
 namespace G3D {
 
@@ -24,8 +25,8 @@ ImageFormat::ImageFormat(
     int             _blueBits,
     int             _depthBits,
     int             _stencilBits,
-    int             _hardwareBitsPerTexel,
-    int             _packedBitsPerTexel,
+    int             _openGLBitsPerPixel,
+    int             _cpuBitsPerPixel,
     int             glDataFormat,
     bool            _opaque,
     bool            _floatingPoint,
@@ -47,15 +48,13 @@ ImageFormat::ImageFormat(
     blueBits(_blueBits),
     stencilBits(_stencilBits),
     depthBits(_depthBits),
-    cpuBitsPerPixel(_packedBitsPerTexel),
-    packedBitsPerTexel(_packedBitsPerTexel),
-    openGLBitsPerPixel(_hardwareBitsPerTexel),
-    hardwareBitsPerTexel(_hardwareBitsPerTexel),
+    cpuBitsPerPixel(_cpuBitsPerPixel),
+    openGLBitsPerPixel(_openGLBitsPerPixel),
     openGLDataFormat(glDataFormat),
     opaque(_opaque),
     floatingPoint(_floatingPoint) {
 
-    debugAssert(_packedBitsPerTexel <= _hardwareBitsPerTexel);
+    debugAssert(cpuBitsPerPixel <= openGLBitsPerPixel);
 }
 
 const ImageFormat* ImageFormat::depth(int depthBits) {
@@ -130,6 +129,7 @@ const ImageFormat* ImageFormat::stencil(int bits) {
         "RGB8I",
         "RGB8UI",
 
+        "RGBA8I",
         "RGBA8UI",
 
         "ARGB8",
@@ -141,7 +141,11 @@ const ImageFormat* ImageFormat::stencil(int bits) {
         "RG8I",
         "RG8UI",
 
+        "R16F",
         "RG16F",
+
+        "R32F",
+        "RG32F",
 
         "RGBA8",
         "RGBA16",
@@ -201,9 +205,84 @@ const std::string& ImageFormat::name() const {
     return nameArray[code];
 }
 
+bool ImageFormat::canInterpretAs(const ImageFormat* otherFormat) const {
+    if (this == otherFormat) {
+        return true;
+    }
+
+    if (compressed || otherFormat->compressed) {
+        return false;
+    }
+
+    if (colorSpace != otherFormat->colorSpace) {
+        return false;
+    }
+
+    if (floatingPoint != otherFormat->floatingPoint) {
+        return false;
+    }
+
+    if (numComponents != otherFormat->numComponents) {
+        return false;
+    }
+
+    if (cpuBitsPerPixel != otherFormat->cpuBitsPerPixel) {
+        return false;
+    }
+
+    if (openGLDataFormat != otherFormat->openGLDataFormat) {
+        return false;
+    }
+
+    return true;
+}
+
+const ImageFormat* ImageFormat::getFormatWithAlpha(const ImageFormat* otherFormat) {
+    if (! otherFormat->opaque)
+    {
+        return otherFormat;
+    }
+
+    switch (otherFormat->code)
+    {
+        case CODE_RGB8:
+            return RGBA8();
+            break;
+
+        case CODE_RGB8I:
+            return RGBA8I();
+            break;
+
+        case CODE_RGB8UI:
+            return RGBA8UI();
+            break;
+
+        // todo: Add BGRA
+
+        case CODE_RGB16:
+            return RGBA16();
+            break;
+
+        case CODE_RGB16F:
+            return RGBA16F();
+            break;
+
+        case CODE_RGB32F:
+            return RGBA32F();
+            break;
+
+        default:
+            break;
+    }
+
+    return NULL;
+}
 
 const ImageFormat* ImageFormat::fromString(const std::string& s) {
-    
+    if (toLower(s) == "auto") {
+        return NULL;
+    }
+
     for (int i = 0; ! nameArray[i].empty(); ++i) {
         if (s == nameArray[i]) {
             return fromCode(ImageFormat::Code(i));
@@ -211,7 +290,6 @@ const ImageFormat* ImageFormat::fromString(const std::string& s) {
     }
     return NULL;
 }
-
 
 const ImageFormat* ImageFormat::fromCode(ImageFormat::Code code) {
     switch (code) {
@@ -305,8 +383,17 @@ const ImageFormat* ImageFormat::fromCode(ImageFormat::Code code) {
     case ImageFormat::CODE_RG8UI:
         return ImageFormat::RG8UI();
 
+    case ImageFormat::CODE_R16F:
+        return ImageFormat::R16F();
+
     case ImageFormat::CODE_RG16F:
         return ImageFormat::RG16F();
+
+    case ImageFormat::CODE_R32F:
+        return ImageFormat::R32F();
+
+    case ImageFormat::CODE_RG32F:
+        return ImageFormat::RG32F();
 
     case ImageFormat::CODE_RGBA8:
         return ImageFormat::RGBA8();
@@ -439,6 +526,38 @@ const ImageFormat* ImageFormat::fromCode(ImageFormat::Code code) {
     }
 }
 
+
+bool ImageFormat::representableAsColor1unorm8() const {
+    return (numComponents == 1) &&
+        (cpuBitsPerPixel == 8) &&
+        ((luminanceBits == 8) ||
+         (redBits == 8) ||
+         (alphaBits == 8));
+}
+
+
+bool ImageFormat::representableAsColor2unorm8() const {
+    return (numComponents == 2) &&
+        (cpuBitsPerPixel == 16) &&
+        ((redBits == 8 && greenBits == 8) ||
+         (luminanceBits == 8 && alphaBits == 8) ||
+         (redBits == 8 && alphaBits == 8));
+
+}
+
+
+bool ImageFormat::representableAsColor3unorm8() const {
+    return (numComponents == 3) &&
+        (cpuBitsPerPixel == 24) &&
+        (redBits == 8 && greenBits == 8 && blueBits == 8);
+}
+
+bool ImageFormat::representableAsColor4unorm8() const {
+    return (numComponents == 4) &&
+        (cpuBitsPerPixel == 32) &&
+        (redBits == 8 && greenBits == 8 && blueBits == 8 && alphaBits == 8);
+}
+
 // Helper variables for defining texture formats
 
 // Is floating point format
@@ -495,7 +614,13 @@ DEFINE_TEXTUREFORMAT_METHOD(RG8I,       2, UNCOMP_FORMAT,   GL_RG8I,            
 
 DEFINE_TEXTUREFORMAT_METHOD(RG8UI,      2, UNCOMP_FORMAT,   GL_RG8UI,           GL_RG_INTEGER,     0,  0,  8,  8,  0,  0,  0, 16, 16,      GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_RG8UI, ImageFormat::COLOR_SPACE_RGB);
 
+DEFINE_TEXTUREFORMAT_METHOD(R16F,       1, UNCOMP_FORMAT,   GL_R16F,            GL_R,      0,  0,  16, 0,  0,  0,  0, 16, 16,       GL_FLOAT, OPAQUE_FORMAT, FLOAT_FORMAT, ImageFormat::CODE_R16F, ImageFormat::COLOR_SPACE_RGB);
+
 DEFINE_TEXTUREFORMAT_METHOD(RG16F,      2, UNCOMP_FORMAT,   GL_RG16F,           GL_RG,     0,  0,  16, 16,  0,  0,  0, 32, 32,      GL_FLOAT, OPAQUE_FORMAT, FLOAT_FORMAT, ImageFormat::CODE_RG16F, ImageFormat::COLOR_SPACE_RGB);
+
+DEFINE_TEXTUREFORMAT_METHOD(R32F,       1, UNCOMP_FORMAT,   GL_R32F,            GL_R,      0,  0,  32, 0,  0,  0,  0, 16, 16,       GL_FLOAT, OPAQUE_FORMAT, FLOAT_FORMAT, ImageFormat::CODE_R32F, ImageFormat::COLOR_SPACE_RGB);
+
+DEFINE_TEXTUREFORMAT_METHOD(RG32F,      2, UNCOMP_FORMAT,   GL_RG32F,           GL_RG,     0,  0,  32, 32,  0,  0,  0, 16, 16,      GL_FLOAT, OPAQUE_FORMAT, FLOAT_FORMAT, ImageFormat::CODE_RG32F, ImageFormat::COLOR_SPACE_RGB);
 
 DEFINE_TEXTUREFORMAT_METHOD(RGB5,       3, UNCOMP_FORMAT,   GL_RGB5,            GL_RGBA,    0,  0,  5,  5,  5,  0,  0, 16, 16,      GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_RGB5, ImageFormat::COLOR_SPACE_RGB);
 
@@ -531,9 +656,11 @@ DEFINE_TEXTUREFORMAT_METHOD(R11G11B10F, 3, UNCOMP_FORMAT,   GL_R11F_G11F_B10F_EX
 DEFINE_TEXTUREFORMAT_METHOD(RGB9E5F,    3, UNCOMP_FORMAT,   GL_RGB9_E5_EXT,                     GL_RGB,     0,  0, 14, 14, 14, 0, 0,   32,   32,    GL_FLOAT, OPAQUE_FORMAT, FLOAT_FORMAT, ImageFormat::CODE_RGB9E5F, ImageFormat::COLOR_SPACE_RGB);
 
 // The base format for integer formats must be *_INTEGER even though the spec doesn't state this
-DEFINE_TEXTUREFORMAT_METHOD(RGB8I,      3, UNCOMP_FORMAT,   GL_RGB8I_EXT,                       GL_RGB_INTEGER,     0,  0,  8,  8,  8,  0,  0, 32, 24,      GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_RGB8I, ImageFormat::COLOR_SPACE_RGB);
+DEFINE_TEXTUREFORMAT_METHOD(RGB8I,      3, UNCOMP_FORMAT,   GL_RGB8I_EXT,                       GL_RGB_INTEGER,     0,  0,  8,  8,  8,  0,  0, 32, 24,      GL_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_RGB8I, ImageFormat::COLOR_SPACE_RGB);
 
 DEFINE_TEXTUREFORMAT_METHOD(RGB8UI,     3, UNCOMP_FORMAT,   GL_RGB8UI_EXT,                      GL_RGB_INTEGER,     0,  0,  8,  8,  8,  0,  0, 32, 24,      GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_RGB8UI, ImageFormat::COLOR_SPACE_RGB);
+
+DEFINE_TEXTUREFORMAT_METHOD(RGBA8I,     4, UNCOMP_FORMAT,   GL_RGBA8I_EXT,                      GL_RGBA_INTEGER,    0,  0,  8,  8,  8,  8,  0, 32, 32,      GL_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_RGBA8I, ImageFormat::COLOR_SPACE_RGB);
 
 DEFINE_TEXTUREFORMAT_METHOD(RGBA8UI,    4, UNCOMP_FORMAT,   GL_RGBA8UI_EXT,                     GL_RGBA_INTEGER,    0,  0,  8,  8,  8,  8,  0, 32, 32,      GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_RGBA8UI, ImageFormat::COLOR_SPACE_RGB);
 
@@ -546,21 +673,21 @@ DEFINE_TEXTUREFORMAT_METHOD(RGBA_DXT3,  4, COMP_FORMAT,     GL_COMPRESSED_RGBA_S
 
 DEFINE_TEXTUREFORMAT_METHOD(RGBA_DXT5,  4, COMP_FORMAT,     GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,   GL_RGBA,    0, 0, 0, 0, 0, 0, 0, 128, 128,  GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_RGBA_DXT5, ImageFormat::COLOR_SPACE_RGB);
 
-DEFINE_TEXTUREFORMAT_METHOD(SRGB8,      3, UNCOMP_FORMAT,   GL_SRGB8,                           GL_RGB,				0,  0,  8,  8,  8,  0,  0, 32, 24,      GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGB8, ImageFormat::COLOR_SPACE_SRGB);
+DEFINE_TEXTUREFORMAT_METHOD(SRGB8,      3, UNCOMP_FORMAT,   GL_SRGB8,                           GL_RGB,                0,  0,  8,  8,  8,  0,  0, 32, 24,      GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGB8, ImageFormat::COLOR_SPACE_SRGB);
 
-DEFINE_TEXTUREFORMAT_METHOD(SRGBA8,     4, UNCOMP_FORMAT,   GL_SRGB8_ALPHA8,                    GL_RGBA,			0,  8,  8,  8,  8,  0,  0, 32, 24,      GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGBA8, ImageFormat::COLOR_SPACE_SRGB);
+DEFINE_TEXTUREFORMAT_METHOD(SRGBA8,     4, UNCOMP_FORMAT,   GL_SRGB8_ALPHA8,                    GL_RGBA,            0,  8,  8,  8,  8,  0,  0, 32, 24,      GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGBA8, ImageFormat::COLOR_SPACE_SRGB);
 
-DEFINE_TEXTUREFORMAT_METHOD(SL8,        1, UNCOMP_FORMAT,   GL_SLUMINANCE8,                     GL_LUMINANCE,		8,  0,  0,  0,  0,  0,  0, 8, 8,        GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_SL8, ImageFormat::COLOR_SPACE_SRGB);
+DEFINE_TEXTUREFORMAT_METHOD(SL8,        1, UNCOMP_FORMAT,   GL_SLUMINANCE8,                     GL_LUMINANCE,        8,  0,  0,  0,  0,  0,  0, 8, 8,        GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_SL8, ImageFormat::COLOR_SPACE_SRGB);
 
-DEFINE_TEXTUREFORMAT_METHOD(SLA8,       2, UNCOMP_FORMAT,   GL_SLUMINANCE8_ALPHA8,              GL_LUMINANCE_ALPHA,	8,  8,  0,  0,  0,  0,  0, 16, 16,      GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SLA8, ImageFormat::COLOR_SPACE_SRGB);
+DEFINE_TEXTUREFORMAT_METHOD(SLA8,       2, UNCOMP_FORMAT,   GL_SLUMINANCE8_ALPHA8,              GL_LUMINANCE_ALPHA,    8,  8,  0,  0,  0,  0,  0, 16, 16,      GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SLA8, ImageFormat::COLOR_SPACE_SRGB);
 
-DEFINE_TEXTUREFORMAT_METHOD(SRGB_DXT1,  3, COMP_FORMAT,     GL_COMPRESSED_SRGB_S3TC_DXT1_EXT,       GL_RGB,			0, 0, 0, 0, 0, 0, 0, 64, 64,    GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGB_DXT1, ImageFormat::COLOR_SPACE_SRGB);
+DEFINE_TEXTUREFORMAT_METHOD(SRGB_DXT1,  3, COMP_FORMAT,     GL_COMPRESSED_SRGB_S3TC_DXT1_EXT,       GL_RGB,            0, 0, 0, 0, 0, 0, 0, 64, 64,    GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGB_DXT1, ImageFormat::COLOR_SPACE_SRGB);
 
-DEFINE_TEXTUREFORMAT_METHOD(SRGBA_DXT1, 4, COMP_FORMAT,     GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT, GL_RGBA,		0, 0, 0, 0, 0, 0, 0, 64, 64,    GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGBA_DXT1, ImageFormat::COLOR_SPACE_SRGB);
+DEFINE_TEXTUREFORMAT_METHOD(SRGBA_DXT1, 4, COMP_FORMAT,     GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT, GL_RGBA,        0, 0, 0, 0, 0, 0, 0, 64, 64,    GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGBA_DXT1, ImageFormat::COLOR_SPACE_SRGB);
 
-DEFINE_TEXTUREFORMAT_METHOD(SRGBA_DXT3, 4, COMP_FORMAT,     GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT, GL_RGBA,		0, 0, 0, 0, 0, 0, 0, 128, 128,  GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGBA_DXT3, ImageFormat::COLOR_SPACE_SRGB);
+DEFINE_TEXTUREFORMAT_METHOD(SRGBA_DXT3, 4, COMP_FORMAT,     GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT, GL_RGBA,        0, 0, 0, 0, 0, 0, 0, 128, 128,  GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGBA_DXT3, ImageFormat::COLOR_SPACE_SRGB);
 
-DEFINE_TEXTUREFORMAT_METHOD(SRGBA_DXT5, 4, COMP_FORMAT,     GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT, GL_RGBA,		0, 0, 0, 0, 0, 0, 0, 128, 128,  GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGBA_DXT5, ImageFormat::COLOR_SPACE_SRGB);
+DEFINE_TEXTUREFORMAT_METHOD(SRGBA_DXT5, 4, COMP_FORMAT,     GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT, GL_RGBA,        0, 0, 0, 0, 0, 0, 0, 128, 128,  GL_UNSIGNED_BYTE, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_SRGBA_DXT5, ImageFormat::COLOR_SPACE_SRGB);
 
 DEFINE_TEXTUREFORMAT_METHOD(DEPTH16,    1, UNCOMP_FORMAT,   GL_DEPTH_COMPONENT16_ARB,           GL_DEPTH_COMPONENT, 0, 0, 0, 0, 0, 16, 0, 16, 16,   GL_UNSIGNED_SHORT, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_DEPTH16, ImageFormat::COLOR_SPACE_NONE);
 
@@ -579,7 +706,7 @@ DEFINE_TEXTUREFORMAT_METHOD(STENCIL8,   1, UNCOMP_FORMAT,   GL_STENCIL_INDEX8_EX
 
 DEFINE_TEXTUREFORMAT_METHOD(STENCIL16,  1, UNCOMP_FORMAT,   GL_STENCIL_INDEX16_EXT,             GL_STENCIL_INDEX, 0, 0, 0, 0, 0, 0, 16, 16, 16,   GL_UNSIGNED_SHORT, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_STENCIL16, ImageFormat::COLOR_SPACE_NONE);
 
-DEFINE_TEXTUREFORMAT_METHOD(DEPTH24_STENCIL8,   2, UNCOMP_FORMAT,   GL_DEPTH24_STENCIL8_EXT,    GL_DEPTH_STENCIL_EXT,0, 0, 0, 0, 0, 24, 8, 32, 32,  GL_UNSIGNED_INT, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_DEPTH24_STENCIL8, ImageFormat::COLOR_SPACE_NONE);
+DEFINE_TEXTUREFORMAT_METHOD(DEPTH24_STENCIL8,   2, UNCOMP_FORMAT,   GL_DEPTH24_STENCIL8_EXT,    GL_DEPTH_STENCIL_EXT,0, 0, 0, 0, 0, 24, 8, 32, 32,  GL_UNSIGNED_INT_24_8, CLEAR_FORMAT, INT_FORMAT, ImageFormat::CODE_DEPTH24_STENCIL8, ImageFormat::COLOR_SPACE_NONE);
 
 DEFINE_TEXTUREFORMAT_METHOD(YUV420_PLANAR,  3, UNCOMP_FORMAT,   GL_NONE,    GL_NONE, 0, 0, 0, 0, 0, 0, 0, 12, 12,  GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_YUV420_PLANAR, ImageFormat::COLOR_SPACE_YUV);
 DEFINE_TEXTUREFORMAT_METHOD(YUV422,         3, UNCOMP_FORMAT,   GL_NONE,    GL_NONE, 0, 0, 0, 0, 0, 0, 0, 16, 16,  GL_UNSIGNED_BYTE, OPAQUE_FORMAT, INT_FORMAT, ImageFormat::CODE_YUV422, ImageFormat::COLOR_SPACE_YUV);

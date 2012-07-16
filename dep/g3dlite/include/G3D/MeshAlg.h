@@ -23,6 +23,7 @@
 #ifdef G3D_WIN32
 // Turn off "conditional expression is constant" warning; MSVC generates this
 // for debug assertions in inlined methods.
+#pragma warning( push )
 #pragma warning (disable : 4127)
 #endif
 
@@ -444,7 +445,7 @@ public:
         Array<Vector3>&       newVertexPositions,
         Array<int>&           toNew,
         Array<int>&           toOld,
-        double                radius = fuzzyEpsilon);
+        float                 radius = fuzzyEpsilon32);
 
     /**
      Modifies the face, edge, and vertex arrays in place so that
@@ -479,7 +480,7 @@ public:
         Array<Face>&          faceArray,
         Array<Edge>&          edgeArray,
         Array<Vertex>&        vertexArray,
-        double                radius = fuzzyEpsilon);
+        float                 radius = fuzzyEpsilon32);
 
 
     /**
@@ -679,5 +680,11 @@ protected:
         int i0, int i1, int f, double area);
 };
 }
+
+
+#ifdef G3D_WIN32
+#pragma warning( pop )
+#endif
+
 #endif
 

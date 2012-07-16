@@ -11,18 +11,54 @@ namespace G3D {
 
 PhysicsFrameSpline::PhysicsFrameSpline() {}
 
+
 PhysicsFrameSpline::PhysicsFrameSpline(const Any& any) {
     *this = any;
 }
+
+
+bool PhysicsFrameSpline::operator==(const PhysicsFrameSpline& other) const {
+    if (cyclic == other.cyclic && time.size() == other.size() && finalInterval == other.finalInterval && control.size() == other.control.size()) {
+        // Check actual values
+        for (int i = 0; i < time.size(); ++i) {
+            if (time[i] != other.time[i]) {
+                return false;
+            }
+        }
+
+        for (int i = 0; i < control.size(); ++i) {
+            if (control[i] != other.control[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+Any PhysicsFrameSpline::toAny() const {
+    Any a(Any::TABLE, "PFrameSpline");
+    
+    a["cyclic"] = cyclic;
+    a["control"] = Any(control);
+    a["time"] = Any(time);
+    a["finalInterval"] = finalInterval;
+
+    return a;
+}
+
 
 PhysicsFrameSpline& PhysicsFrameSpline::operator=(const Any& any) {
     const std::string& n = toLower(any.name());
     *this = PhysicsFrameSpline();
 
-    if (n == "physicsframespline" || n == "pframespline") {
+    if ((n == "physicsframespline") || (n == "pframespline")) {
         any.verifyName("PhysicsFrameSpline", "PFrameSpline");
         
-        for (Any::AnyTable::Iterator it = any.table().begin(); it.hasMore(); ++it) {
+        for (Any::AnyTable::Iterator it = any.table().begin(); it.isValid(); ++it) {
             const std::string& k = toLower(it->key);
             if (k == "cyclic") {
                 cyclic = it->value;

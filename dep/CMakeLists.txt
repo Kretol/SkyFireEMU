@@ -31,6 +31,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     add_subdirectory(bzip2)
   endif()
   add_subdirectory(zlib)
+  add_subdirectory(zip)
 endif()
 
 add_subdirectory(g3dlite)

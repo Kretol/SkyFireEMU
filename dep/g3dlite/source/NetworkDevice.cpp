@@ -192,31 +192,31 @@ void NetworkDevice::EthernetAdapter::describe(TextOutput& t) const {
     t.writeNewline();
     
     t.writeSymbols("hostname", "=");
-    t.writeString(hostname);
+    t.writeString(hostname + ";");
     t.writeNewline();
 
     t.writeSymbols("name", "=");
-    t.writeString(name);
+    t.writeString(name + ";");
     t.writeNewline();    
 
     t.writeSymbols("ip", "=");
-    t.writeSymbol(formatIP(ip));
+    t.writeSymbol("\"" + formatIP(ip) + "\";");
     t.writeNewline();    
 
     t.writeSymbols("subnet", "=");
-    t.writeSymbol(formatIP(subnet));
+    t.writeSymbol("\"" + formatIP(subnet) + "\";");
     t.writeNewline();    
 
     t.writeSymbols("broadcast", "=");
-    t.writeSymbol(formatIP(broadcast));
+    t.writeSymbol("\"" + formatIP(broadcast) + "\";");
     t.writeNewline();    
 
     t.writeSymbols("mac", "=");
-    t.writeSymbol(formatMAC(mac));
+    t.writeSymbol("\"" + formatMAC(mac) + "\";");
     t.writeNewline();    
 
     t.popIndent();
-    t.writeSymbol("}");
+    t.writeSymbol("};");
     t.writeNewline();
 }
 
@@ -250,7 +250,7 @@ bool NetworkDevice::init() {
 
     logPrintf("Network Startup");
     logPrintf("Starting WinSock networking.\n");
-    WSADATA wsda;		    
+    WSADATA wsda;            
     WSAStartup(MAKEWORD(G3D_WINSOCK_MAJOR_VERSION, G3D_WINSOCK_MINOR_VERSION), &wsda);
         
     std::string hostname = "localhost";
@@ -449,7 +449,7 @@ bool NetworkDevice::init() {
     }
 
     // Extract all interesting adapters from the table
-    for (AdapterTable::Iterator it = table.begin(); it.hasMore(); ++it) {
+    for (AdapterTable::Iterator it = table.begin(); it.isValid(); ++it) {
         const EthernetAdapter& adapter = it->value;
         
         // Only add adapters that have IP addresses
@@ -938,11 +938,11 @@ void ReliableConduit::receiveIntoBuffer() {
 
     // Read the data itself
     int ret = 0;
-    uint32 left = messageSize - receiveBufferUsedSize;
+    uint32 left = messageSize - (uint32)receiveBufferUsedSize;
     int count = 0;
     while ((ret != SOCKET_ERROR) && (left > 0) && (count < 100)) {
 
-        ret = recv(sock, ((char*)receiveBuffer) + receiveBufferUsedSize, left, 0);
+        ret = recv(sock, ((char*)receiveBuffer) + (uint32)receiveBufferUsedSize, left, 0);
 
         if (ret > 0) {
             left -= ret;
@@ -1247,17 +1247,17 @@ bool NetListener::clientWaiting() const {
 void NetworkDevice::describeSystem(
     TextOutput& t) {
 
-    t.writeSymbols("Network", "{");
+    t.writeSymbols("Network", "=", "{");
     t.writeNewline();
     t.pushIndent();
     
     for (int i = 0; i < m_adapterArray.size(); ++i) {
+        t.printf("Adapter%d =", i);
         m_adapterArray[i].describe(t);
     }
 
-
     t.popIndent();
-    t.writeSymbols("}");
+    t.writeSymbols("};");
     t.writeNewline();
     t.writeNewline();
 }

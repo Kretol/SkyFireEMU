@@ -1,16 +1,16 @@
 /** 
-  @file WeakCache.h
+  \file G3D/WeakCache.h
  
-  @maintainer Morgan McGuire, graphics3d.com
+  \maintainer Morgan McGuire, graphics3d.com
  
-  @created 2007-05-16
-  @edited  2007-05-16
+  \created 2007-05-16
+  \edited  2012-01-02
 
-  Copyright 2000-2007, Morgan McGuire.
+  Copyright 2000-2012, Morgan McGuire.
   All rights reserved.
  */
-#ifndef G3D_WEAKCACHE_H
-#define G3D_WEAKCACHE_H
+#ifndef G3D_WeakCache_h
+#define G3D_WeakCache_h
 
 #include "G3D/ReferenceCount.h"
 #include "G3D/Table.h"
@@ -73,35 +73,8 @@ public:
         }
     }
 
-    void set(const Key& k, ValueRef v) {
-        table.set(k, v);
-    }
-
-    /** Removes k from the cache or does nothing if it is not currently in the cache.*/
-    void remove(const Key& k) {
-        if (table.containsKey(k)) {
-            table.remove(k);
-        }
-    }
-};
-
-#if 0 // To turn off all WeakCaching
-template<class Key, class ValueRef>
-class WeakCache {
-private:
-
-    Table<Key, ValueRef> table;
-
-public:
-    /**
-       Returns NULL if the object is not in the cache
-    */
-    ValueRef operator[](const Key& k) {
-        if (table.containsKey(k)) {
-            return table[k];
-        } else {
-            return NULL;
-        }
+    void clear() {
+        table.clear();
     }
 
     void set(const Key& k, ValueRef v) {
@@ -115,7 +88,6 @@ public:
         }
     }
 };
-#endif
 
 }
 #endif

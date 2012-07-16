@@ -177,6 +177,7 @@ target_link_libraries(worldserver
   ${OPENSSL_LIBRARIES}
   ${OPENSSL_EXTRA_LIBRARIES}
   ${DETOUR_LIBRARY}
+  ${ZIP_LIBRARIES}
   ${ZLIB_LIBRARIES}
   ${OSX_LIBS}
 )

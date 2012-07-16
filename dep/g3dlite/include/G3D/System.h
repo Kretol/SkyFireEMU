@@ -1,14 +1,14 @@
 /** 
-  @file System.h
+  \file System.h
  
-  @maintainer Morgan McGuire, http://graphics.cs.williams.edu
+  \maintainer Morgan McGuire, http://graphics.cs.williams.edu
  
-  @cite Rob Wyatt http://www.gamasutra.com/features/wyatts_world/19990709/processor_detection_01.htm
-  @cite Benjamin Jurke http://www.flipcode.com/cgi-bin/msg.cgi?showThread=COTD-ProcessorDetectionClass&forum=cotd&id=-1
-  @cite Michael Herf http://www.stereopsis.com/memcpy.html
+  \cite Rob Wyatt http://www.gamasutra.com/features/wyatts_world/19990709/processor_detection_01.htm
+  \cite Benjamin Jurke http://www.flipcode.com/cgi-bin/msg.cgi?showThread=COTD-ProcessorDetectionClass&forum=cotd&id=-1
+  \cite Michael Herf http://www.stereopsis.com/memcpy.html
 
-  @created 2003-01-25
-  @edited  2008-10-14
+  \created 2003-01-25
+  \edited  2010-09-25
  */
 
 #ifndef G3D_System_h
@@ -18,13 +18,16 @@
 #include "G3D/g3dmath.h"
 #include "G3D/G3DGameUnits.h"
 #include "G3D/BinaryFormat.h"
+#include "G3D/FileNotFound.h"
 #include <string>
 
 #ifdef G3D_OSX
+#define Zone OSX_Zone
 #   include <CoreServices/CoreServices.h>
 #endif
 
 namespace G3D {
+
 
 /**
  Routine used by the demos to find the data.  Searches in
@@ -241,12 +244,6 @@ public:
     static std::string currentDateString();
 
     /**
-       Guarantees that the start of the array is aligned to the 
-       specified number of bytes.
-    */
-    static void* alignedMalloc(size_t bytes, size_t alignment);
-    
-    /**
        Uses pooled storage to optimize small allocations (1 byte to 5
        kilobytes).  Can be 10x to 100x faster than calling ::malloc or
        new.
@@ -285,6 +282,12 @@ public:
      */
     static void free(void* p);
 
+    /**
+       Guarantees that the start of the array is aligned to the 
+       specified number of bytes.
+    */
+    static void* alignedMalloc(size_t bytes, size_t alignment);
+    
     /**
      Frees memory allocated with alignedMalloc.
      */
@@ -375,10 +378,10 @@ public:
      // count now contains the cycle count for the intervening operation.
      </PRE>
      */
-    /* static void beginCycleCount(uint64& cycleCount);
+    static void beginCycleCount(uint64& cycleCount);
     static void endCycleCount(uint64& cycleCount);
 
-    static uint64 getCycleCount(); */
+    static uint64 getCycleCount();
 
     inline static void setOutOfMemoryCallback(OutOfMemoryCallback c) {
         instance().m_outOfMemoryCallback = c;
@@ -401,7 +404,7 @@ public:
 
     /** Set an environment variable for the current process */
     static void setEnv(const std::string& name, const std::string& value);
-	
+    
     /** Get an environment variable for the current process.  Returns NULL if the variable doesn't exist. */
     static const char* getEnv(const std::string& name);
 
@@ -426,8 +429,42 @@ public:
      Tries to locate the resource by looking in related directories.
      If found, returns the full path to the resource, otherwise
      returns the empty string.
+
+     Looks in:
+
+         - Current directory
+         - App starting directory
+         - $G3D9DATA directory
+         - data/
+         - data.zip/
+         - ../data-files/  (windows)
+         - ../../data-files/ (windows)
+         - ../../../data-files/ (windows)
+
+       Plus the following subdirectories of those:
+
+         - cubemap
+         - gui
+         - font
+         - icon
+         - SuperShader
+         - models
+         - image
+         - sky
+         - md2
+         - md3
+         - ifs
+         - 3ds
+
+        \param exceptionIfNotFound If true and the file is not found, throws G3D::FileNotFound.
      */    
-    static std::string findDataFile(const std::string& full, bool errorIfNotFound = true);
+    static std::string findDataFile(const std::string& full, bool exceptionIfNotFound = true, bool caseSensitive =
+#ifdef G3D_WIN32
+        false
+#else
+        true
+#endif
+        );
 
     /**
         Sets the path that the application is using as its data directory.
@@ -438,22 +475,33 @@ public:
 
 };
 
-/* don't need that for MaNGOS, not portable to Win64...
+
 #ifdef _MSC_VER
-    inline uint64 System::getCycleCount() {
-        uint32 timehi, timelo;
+#   ifdef _M_IX86
+        // 32-bit
+        inline uint64 System::getCycleCount() {
+            uint32 timehi, timelo;
 
-        // Use the assembly instruction rdtsc, which gets the current
-        // cycle count (since the process started) and puts it in edx:eax.
-        __asm
-            {
-                rdtsc;
-                mov timehi, edx;
-                mov timelo, eax;
-            }
+            // Use the assembly instruction rdtsc, which gets the current
+            // cycle count (since the process started) and puts it in edx:eax.
+            __asm
+                {
+                    rdtsc;
+                    mov timehi, edx;
+                    mov timelo, eax;
+                }
 
-        return ((uint64)timehi << 32) + (uint64)timelo;
-    }
+            return ((uint64)timehi << 32) + (uint64)timelo;
+        }
+#   else
+        // 64-bit
+        inline uint64 System::getCycleCount() {
+            LARGE_INTEGER now;
+            QueryPerformanceCounter(&now);
+            return now.QuadPart;
+        }
+
+#   endif
 
 #elif defined(G3D_LINUX)
 
@@ -472,13 +520,13 @@ public:
 #elif defined(G3D_OSX)
 
     inline uint64 System::getCycleCount() {
-		//Note:  To put off extra processing until the end, this does not 
-		//return the actual clock cycle count.  It is a bus cycle count.
-		//When endCycleCount() is called, it converts the two into a difference
-		//of clock cycles
-		
+        //Note:  To put off extra processing until the end, this does not 
+        //return the actual clock cycle count.  It is a bus cycle count.
+        //When endCycleCount() is called, it converts the two into a difference
+        //of clock cycles
+        
         return (uint64) UnsignedWideToUInt64(UpTime());
-		//return (uint64) mach_absolute_time();
+        //return (uint64) mach_absolute_time();
     }
 
 #endif
@@ -493,15 +541,20 @@ inline void System::endCycleCount(uint64& cycleCount) {
     cycleCount = getCycleCount() - cycleCount;
 #else
     AbsoluteTime end = UpTime();
-    Nanoseconds diffNS =
+    Nanoseconds diffNS = 
         AbsoluteDeltaToNanoseconds(end, UInt64ToUnsignedWide(cycleCount));
-    cycleCount =
-        (uint64) ((double) (instance().m_OSXCPUSpeed) *
+    cycleCount = 
+        (uint64) ((double) (instance().m_OSXCPUSpeed) * 
                   (double) UnsignedWideToUInt64(diffNS) * instance().m_secondsPerNS);
 #endif
 }
- */
+
 
 } // namespace
+
+
+#ifdef G3D_OSX
+#undef Zone
+#endif
 
 #endif

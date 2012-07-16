@@ -1,14 +1,14 @@
 /**
-  @file GCamera.h
+  \file GCamera.h
 
-  @maintainer Morgan McGuire, http://graphics.cs.williams.edu
+  \maintainer Morgan McGuire, http://graphics.cs.williams.edu
 
-  @created 2005-07-20
-  @edited  2009-04-20
+  \created 2005-07-20
+  \edited  2010-10-31
 */
 
-#ifndef G3D_GCamera_H
-#define G3D_GCamera_H
+#ifndef G3D_GCamera_h
+#define G3D_GCamera_h
 
 #include "G3D/platform.h"
 #include "G3D/CoordinateFrame.h"
@@ -23,7 +23,7 @@ class Rect2D;
 class Any;
 
 /**
-  Abstraction of a pinhole camera.
+  \brief Abstraction of a lens or pinhole camera.
 
   The area a camera sees is called a frustum.  It is bounded by the
   near plane, the far plane, and the sides of the view frame projected
@@ -69,6 +69,14 @@ private:
 
     Vector2                     m_pixelOffset;
 
+    float                       m_lensRadius;
+
+    /** Negative number */
+    float                       m_focusPlaneZ;
+
+    /** Non-negative, in seconds */
+    float                       m_exposureTime;
+
 public:
 
     /** Must be of the format produced by the Any cast, e.g.,
@@ -86,7 +94,7 @@ public:
     */
     GCamera(const Any& any);
 
-    operator Any() const;
+    Any toAny() const;
 
     class Frustum {
     public:
@@ -122,6 +130,26 @@ public:
         return m_cframe;
     }
 
+    /** 
+        Time from "shutter open" to "shutter close".  This is often 0 for 
+        traditional real-time rendering.  Larger numbers are useful for
+        capturing motion blur in more sophisticated rendering systems.
+        
+        In a real camera, a longer exposure also makes the image
+        brighter.  In rendering, it is useful to control the global
+        image intensity separately from the amount of motion blur,
+        so this interval may not affect image intensity under
+        your renderer.
+     */
+    float exposureTime() const {
+        return m_exposureTime;
+    }
+
+    void setExposureTime(float t) {
+        debugAssert(t >= 0);
+        m_exposureTime = t;
+    }
+    
     /** Displacement from the upper left added in pixels in screen
         space to the projection matrix.  This is useful for shifting
         the sampled location from the pixel center (OpenGL convention)
@@ -145,8 +173,12 @@ public:
         varies from -1 to 1 on all axes.  The projection matrix does
         not include the camera transform.
 
+        For rendering direct to an OSWindow (vs. rendering to Texture/Framebuffer),
+        multiply this matrix by <code>Matrix4::scale(1, -1, 1)</code>. 
+
         This is the matrix that a RenderDevice (or OpenGL) uses as the projection matrix.
-        @sa RenderDevice::setProjectionAndCameraMatrix, RenderDevice::setProjectionMatrix, Matrix4::perspectiveProjection
+        \sa RenderDevice::setProjectionAndCameraMatrix, RenderDevice::setProjectionMatrix, Matrix4::perspectiveProjection,
+        gluPerspective
     */
     void getProjectUnitMatrix(const Rect2D& viewport, Matrix4& P) const;
 
@@ -161,7 +193,7 @@ public:
 
         \deprecated
     */ // TODO: Remove
-    Vector3 convertFromUnitToNormal(const Vector3& in, const Rect2D& viewport) const;
+    Point3 convertFromUnitToNormal(const Point3& in, const Rect2D& viewport) const;
 
     /**
        Sets the field of view, in radians.  The 
@@ -170,35 +202,52 @@ public:
 
        This is the full angle, i.e., from the left side of the
        viewport to the right side.
+
+       The field of view is specified for the pinhole version of the
+       camera.
     */
     void setFieldOfView(float edgeToEdgeAngleRadians, FOVDirection direction);
 
     /** Returns the current full field of view angle (from the left side of the
        viewport to the right side) and direction */
-    inline void getFieldOfView(float& angle, FOVDirection& direction) const {
+    void getFieldOfView(float& angle, FOVDirection& direction) const {
         angle = m_fieldOfView;
         direction = m_direction;
     }
 
+#if 0
+    /** Returns the field of view in \a direction for the \a viewport. */
+    float fieldOfView(FOVDirection direction, const Rect2D& viewport) const {
+        if (m_fieldOfView == direction) {
+            return m_fieldOfView;
+        } else if (direction == HORIZONTAL) {
+            m_fieldOfView;
+        }
+    }
+#endif
+    
+
     /**
-     Projects a world space point onto a width x height screen.  The
+     Pinhole projects a world space point onto a width x height screen.  The
      returned coordinate uses pixmap addressing: x = right and y =
      down.  The resulting z value is 0 at the near plane, 1 at the far plane,
      and is a linear compression of unit cube projection.
 
-     If the point is behind the camera, Vector3::inf() is returned.
+     If the point is behind the camera, Point3::inf() is returned.
+
+     \sa RenderDevice::invertY
      */
-    Vector3 project(const G3D::Vector3& point,
-                    const class Rect2D& viewport) const;
+    Point3 project(const Point3& point,
+                   const class Rect2D& viewport) const;
 
     /**
-     Projects a world space point onto a unit cube.  The resulting
+       Pinhole projects a world space point onto a unit cube.  The resulting
      x,y,z values range between -1 and 1, where z is -1
      at the near plane and 1 at the far plane and varies hyperbolically in between.
 
-     If the point is behind the camera, Vector3::inf() is returned.
+     If the point is behind the camera, Point3::inf() is returned.
      */
-    Vector3 projectUnit(const G3D::Vector3& point,
+    Point3 projectUnit(const Point3& point,
                         const class Rect2D& viewport) const;
 
     /**
@@ -206,56 +255,53 @@ public:
        v.x is in pixels from the left, v.y is in pixels from
        the top, and v.z is on the range 0 (near plane) to 1 (far plane).
      */
-    Vector3 unproject(const Vector3& v, const Rect2D& viewport) const;
+    Point3 unproject(const Point3& v, const Rect2D& viewport) const;
 
      /**
        Gives the world-space coordinates of unit cube point v, where
        v varies from -1 to 1 on all axes.  The unproject first
        transforms the point into a pixel location for the viewport, then calls unproject
      */
-    Vector3 unprojectUnit(const Vector3& v, const Rect2D& viewport) const;
+    Point3 unprojectUnit(const Point3& v, const Rect2D& viewport) const;
 
     /**
      Returns the pixel area covered by a shape of the given
-     world space area at the given z value (z must be negative).
+     world space area at the given z value (z must be negative)
+     under pinhole projection.
      */
     float worldToScreenSpaceArea(float area, float z, const class Rect2D& viewport) const;
 
     /**
-     Returns the world space 3D viewport corners.  These
+     Returns the world space 3D viewport corners under pinhole projection.  These
      are at the near clipping plane.  The corners are constructed
      from the nearPlaneZ, viewportWidth, and viewportHeight.
      "left" and "right" are from the GCamera's perspective.
      */
     void getNearViewportCorners(const class Rect2D& viewport,
-                                Vector3& outUR, Vector3& outUL,
-                                Vector3& outLL, Vector3& outLR) const;
+                                Point3& outUR, Point3& outUL,
+                                Point3& outLL, Point3& outLR) const;
 
     /**
-     Returns the world space 3D viewport corners.  These
+     Returns the world space 3D viewport corners under pinhole projection.  These
      are at the Far clipping plane.  The corners are constructed
      from the nearPlaneZ, farPlaneZ, viewportWidth, and viewportHeight.
      "left" and "right" are from the GCamera's perspective.
      */
     void getFarViewportCorners(const class Rect2D& viewport,
-                               Vector3& outUR, Vector3& outUL,
-                               Vector3& outLL, Vector3& outLR) const;
-
-    /**
-     Returns the image plane depth,  assumes imagePlane
-     is the same as the near clipping plane.
-     returns a positive number.
-     */
-    float imagePlaneDepth() const;
+                               Point3& outUR, Point3& outUL,
+                               Point3& outLL, Point3& outLR) const;
 
     /**
       Returns the world space ray passing through the center of pixel
-      (x, y) on the image plane.  The pixel x and y axes are opposite
-      the 3D object space axes: (0,0) is the upper left corner of the screen.
-      They are in viewport coordinates, not screen coordinates.
+      (x, y) on the image plane under pinhole projection.  The pixel x
+      and y axes are opposite the 3D object space axes: (0,0) is the
+      upper left corner of the screen.  They are in viewport
+      coordinates, not screen coordinates.
 
-      The ray origin is at the origin.  To start it at the image plane,
-      move it forward by imagePlaneDepth/ray.direction.z
+      The ray origin is at the camera-space origin, that is, in world space
+      it is at GCamera::coordinateFrame().translation.  To start it at the image plane,
+      move it forward by imagePlaneDepth/ray.direction.z along the camera's
+      look vector.
 
       Integer (x, y) values correspond to
       the upper left corners of pixels.  If you want to cast rays
@@ -297,25 +343,31 @@ public:
         debugAssert(z < 0);
         m_nearPlaneZ = z;
     }
+    
+    /** \brief The number of pixels per meter at z=-1 for the given viewport.
+       This is useful for performing explicit projections and for transforming world-space 
+       values like circle of confusion into
+       screen space.*/
+    float imagePlanePixelsPerMeter(const class Rect2D& viewport) const;
 
     /**
-     Returns the camera space width of the viewport at the near plane.
+     Returns the camera space width in meters of the viewport at the near plane.
      */
-    float viewportWidth(const class Rect2D& viewport) const;
+    float nearPlaneViewportWidth(const class Rect2D& viewport) const;
 
     /**
-     Returns the camera space height of the viewport at the near plane.
+     Returns the camera space height of the viewport in meters at the near plane.
      */
-    float viewportHeight(const class Rect2D& viewport) const;
+    float nearPlaneViewportHeight(const class Rect2D& viewport) const;
 
-    void setPosition(const Vector3& t);
+    void setPosition(const Point3& t);
 
     /** Rotate the camera in place to look at the target.  Does not
         persistently look at that location when the camera moves;
         i.e., if you move the camera and still want it to look at the
         old target, you must call lookAt again after moving the
         camera.)*/
-    void lookAt(const Vector3& position, const Vector3& up = Vector3::unitY());
+    void lookAt(const Point3& position, const Vector3& up = Vector3::unitY());
 
     /**
        Returns the clipping planes of the frustum, in world space.  
@@ -331,8 +383,7 @@ public:
        absolute dimensions and xy values don't matter.
     */
     void getClipPlanes
-    (
-     const Rect2D& viewport,
+    (const Rect2D& viewport,
      Array<Plane>& outClip) const;
 
     /**
@@ -346,6 +397,33 @@ public:
     /** Read and Write camera parameters */
     void serialize(class BinaryOutput& bo) const;
     void deserialize(class BinaryInput& bi);
+
+    /** Plane that is in focus under a lens camera. This is a negative
+        number. */
+    void setFocusPlaneZ(float z) {
+        debugAssert(z < 0);
+        m_focusPlaneZ = z;
+    }
+    
+    float focusPlaneZ() const {
+        return m_focusPlaneZ;
+    }
+
+    void setLensRadius(float r) {
+        m_lensRadius = r;
+    }
+
+    float lensRadius() const {
+        return m_lensRadius;
+    }
+
+    /** World space ray from a lens camera.  (\a u, \a v) are signed
+        (-1, 1) that should lie within a unit-radius disc.*/
+    Ray worldRay(float x, float y, float u, float v, const class Rect2D &viewport) const;
+    
+    /** Circle of confusion radius, in pixels, for a point at negative position \a z from the center of projection
+    along the camera-space z axis.*/
+    float circleOfConfusionRadius(float z, const class Rect2D& viewport) const;
    
 };
 

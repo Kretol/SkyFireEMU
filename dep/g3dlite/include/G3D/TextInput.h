@@ -1,16 +1,16 @@
 /**
- @file TextInput.h
+ \file G3D/TextInput.h
 
  Simple text lexer/tokenizer.
 
- @maintainer Morgan McGuire, http://graphics.cs.williams.edu
+ \maintainer Morgan McGuire, http://graphics.cs.williams.edu
 
- @cite Based on a lexer written by Aaron Orenstein. 
+ \cite Based on a lexer written by Aaron Orenstein. 
 
- @created 2002-11-27
- @edited  2010-07-03
+ \created 2002-11-27
+ \edited  2011-07-19
 
- Copyright 2000-2010, Morgan McGuire.
+ Copyright 2000-2012, Morgan McGuire.
  All rights reserved.
  */
 
@@ -148,7 +148,9 @@ public:
 
 
 /**
- A simple style tokenizer for reading text files.  TextInput handles a
+ \brief A simple tokenizer for parsing text files.  
+ 
+ TextInput handles a
  superset of C++,Java, Matlab, and Bash code text including single
  line comments, block comments, quoted strings with escape sequences,
  and operators.  TextInput recognizes several categories of tokens,
@@ -191,7 +193,7 @@ public:
 
   <B>Examples</B>
 
-  <PRE>
+  \code
   TextInput ti(TextInput::FROM_STRING, "name = \"Max\", height = 6");
 
   Token t;
@@ -206,15 +208,15 @@ public:
 
   std::string name = ti.read().sval;
   ti.read();
-  </PRE>
+  \endcode
 
-  <PRE>
+  \code
   TextInput ti(TextInput::FROM_STRING, "name = \"Max\", height = 6");
   ti.readSymbols("name", "=");
   std::string name = ti.readString();
   ti.readSymbols(",", "height", "=");
   double height = ti. readNumber();
-  </PRE>
+  \endcode
 
  Assumes that the file is not modified once opened.
  */
@@ -398,8 +400,11 @@ public:
 
         Settings();
     };
-	
+    
 private:
+
+    /** \sa pushSettings / popSettings */
+    Array<Settings>         settingsStack;
 
     std::deque<Token>       stack;
 
@@ -477,7 +482,7 @@ private:
      Read the next token, returning an END token if no more input is
      available.
      */
-    Token nextToken();
+    void nextToken(Token& t);
 
     /**
        Helper for nextToken.  Appends characters to t._string until the end
@@ -572,6 +577,17 @@ public:
     /** Returns true while there are tokens remaining. */
     bool hasMore();
 
+    /** Temporarily switch parsing to use \a settings.  Note that this will override the currently recorded sourceFilename unless you explicitly set it back.
+    \sa popSettings */
+    void pushSettings(const Settings& settings) {
+        settingsStack.push(options);
+        options = settings;
+    }
+
+    void popSettings() {
+        options = settingsStack.pop();
+    }
+
     /** Read the next token (which will be the END token if ! hasMore()).
     
         Signed numbers can be handled in one of two modes.  If the option 
@@ -589,10 +605,13 @@ public:
     */
     Token read();
 
+    /** Avoids the copy of read() */
+    void read(Token& t);
+
     /** Calls read() until the result is not a newline or comment */
     Token readSignificant();
 
-    /** Read one token (or possibly two) as a number or throws
+    /** Read one token (or possibly two, for minus sign) as a number or throws
         WrongTokenType, and returns the number.
 
         If the first token in the input is a number, it is returned directly.
@@ -607,6 +626,10 @@ public:
         tokens are consumed.
     */
     double readNumber();
+
+    /** Reads a number that must be in C integer format: 
+      <code> [ '+' | '-' ] #+  |  '0x'#+</code>  */
+    int readInteger();
 
     bool readBoolean();
 
@@ -733,6 +756,9 @@ public:
         consumed.
     */
     Token readSymbolToken();
+
+    /** Avoids the copy of readSymbolToken() */
+    void readSymbolToken(Token& t);
 
     /** Like readSymbolToken, but returns the token's string.
 

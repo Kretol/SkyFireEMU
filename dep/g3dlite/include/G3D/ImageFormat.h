@@ -1,10 +1,10 @@
 /**
-  @file ImageFormat.h
+  \file G3D/ImageFormat.h
 
-  @maintainer Morgan McGuire, http://graphics.cs.williams.edu
+  \maintainer Morgan McGuire, http://graphics.cs.williams.edu
 
-  @created 2003-05-23
-  @edited  2010-05-01
+  \created 2003-05-23
+  \edited  2011-06-23
 */
 
 #ifndef GLG3D_ImageFormat_H
@@ -27,6 +27,7 @@ public:
 
     // Must update ImageFormat::name() when this enum changes.
     enum Code {
+        CODE_AUTO = -2,
         CODE_NONE = -1,
         CODE_L8,
         CODE_L16,
@@ -58,6 +59,7 @@ public:
         CODE_RGB8I,
         CODE_RGB8UI,
 
+        CODE_RGBA8I,
         CODE_RGBA8UI,
 
         CODE_ARGB8,
@@ -69,7 +71,11 @@ public:
         CODE_RG8I,
         CODE_RG8UI,
 
+        CODE_R16F,
         CODE_RG16F,
+
+        CODE_R32F,
+        CODE_RG32F,
 
         CODE_RGBA8,
         CODE_RGBA16,
@@ -182,10 +188,6 @@ public:
     /** Amount of CPU memory per pixel when packed into an array, discounting any end-of-row padding. */
     int                 cpuBitsPerPixel;
 
-    /** Amount of CPU memory per pixel when packed into an array, discounting any end-of-row padding. 
-     @deprecated Use cpuBitsPerPixel*/
-    int                 packedBitsPerTexel;
-    
     /**
       Amount of GPU memory per pixel on most graphics cards, for formats supported by OpenGL. This is
       only an estimate--the actual amount of memory may be different on your actual card.
@@ -195,9 +197,6 @@ public:
      4 bytes.
      */
     int                 openGLBitsPerPixel;
-
-    /** @deprecated Use openGLBitsPerPixel */
-    int                 hardwareBitsPerTexel;
 
     /** The OpenGL bytes (type) format of the data buffer used with this texture format, e.g., GL_UNSIGNED_BYTE */
     int                 openGLDataFormat;
@@ -210,6 +209,13 @@ public:
 
     /** Human readable name of this format.*/
     const std::string& name() const;
+
+    /** True if data in otherFormat is binary compatible */
+    bool canInterpretAs(const ImageFormat* otherFormat) const;
+
+    /** Returns ImageFormat representing the same values as \a otherFormat along with an alpha channel or NULL.
+        Will return itself if already contains an alpha channel. */
+    static const ImageFormat* getFormatWithAlpha(const ImageFormat* otherFormat);
 
     /** Takes the same values that name() returns */
     static const ImageFormat* fromString(const std::string& s);
@@ -228,8 +234,8 @@ private:
      int             blueBits,
      int             depthBits,
      int             stencilBits,
-     int             hardwareBitsPerTexel,
-     int             packedBitsPerTexel,
+     int             openGLBitsPerPixel,
+     int             cpuBitsPerPixel,
      int             glDataFormat,
      bool            opaque,
      bool            floatingPoint,
@@ -273,7 +279,11 @@ public:
     static const ImageFormat* RG8I();
     static const ImageFormat* RG8UI();
 
+    static const ImageFormat* R16F();
     static const ImageFormat* RG16F();
+
+    static const ImageFormat* R32F();
+    static const ImageFormat* RG32F();
 
     static const ImageFormat* RGB5();
 
@@ -308,6 +318,8 @@ public:
     static const ImageFormat* RGB8I();    
 
     static const ImageFormat* RGB8UI();    
+
+    static const ImageFormat* RGBA8I();    
 
     static const ImageFormat* RGBA8UI();    
     
@@ -359,7 +371,7 @@ public:
 
     static const ImageFormat* YUV444();
 
-	/**
+    /**
      NULL pointer; indicates that the G3D::Texture class should choose
      either RGBA8 or RGB8 depending on the presence of an alpha channel
      in the input.
@@ -379,7 +391,6 @@ public:
     /** Returns the matching ImageFormat* identified by the Code.  May return NULL
       if this format's code is reserved but not yet implemented by G3D. */
     static const ImageFormat* fromCode(ImageFormat::Code code);
-
 
 
     /** For use with ImageFormat::convert. */
@@ -420,11 +431,23 @@ public:
         Returns true if a conversion was available, false if none occurred.
     */
     static bool convert(const Array<const void*>& srcBytes, int srcWidth, int srcHeight, const ImageFormat* srcFormat, int srcRowPadBits,
-	                    const Array<void*>& dstBytes, const ImageFormat* dstFormat, int dstRowPadBits,
-	                    bool invertY = false, BayerAlgorithm bayerAlg = BayerAlgorithm::MHC);
+                        const Array<void*>& dstBytes, const ImageFormat* dstFormat, int dstRowPadBits,
+                        bool invertY = false, BayerAlgorithm bayerAlg = BayerAlgorithm::MHC);
 
     /* Checks if a conversion between two formats is available. */
     static bool conversionAvailable(const ImageFormat* srcFormat, int srcRowPadBits, const ImageFormat* dstFormat, int dstRowPadBits, bool invertY = false);
+
+    /** Does this contain exactly one unorm8 component? */
+    bool representableAsColor1unorm8() const;
+
+    /** Does this contain exactly two unorm8 components? */
+    bool representableAsColor2unorm8() const;
+
+    /** Does this contain exactly three unorm8 components? */
+    bool representableAsColor3unorm8() const;
+
+    /** Does this contain exactly four unorm8 components? */
+    bool representableAsColor4unorm8() const;
 };
 
 typedef ImageFormat TextureFormat;

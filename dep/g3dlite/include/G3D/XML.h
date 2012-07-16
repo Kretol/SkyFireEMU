@@ -7,7 +7,7 @@
  @created 2010-02-11
  @edited  2010-02-24
 
- Copyright 2000-2010, Morgan McGuire.
+ Copyright 2000-2012, Morgan McGuire.
  All rights reserved.
  */
 
@@ -117,7 +117,7 @@ public:
         return m_attribute;
     }
 
-    const Array<XML> childArray() const {
+    const Array<XML>& childArray() const {
         return m_child;
     }
     
@@ -127,7 +127,7 @@ public:
     }
 
     /** Attribute table size; zero for a TAG */
-    int numAttributes() const {
+    size_t numAttributes() const {
         return m_attribute.size();
     }
 

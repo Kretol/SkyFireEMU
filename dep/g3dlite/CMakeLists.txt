@@ -33,14 +33,22 @@ set(g3dlib_STAT_SRCS
   source/Matrix3.cpp
   source/Matrix4.cpp
   source/MemoryManager.cpp
+  source/Noise.cpp
+  source/Parse3DS.cpp
+  source/ParseError.cpp
+  source/ParseMTL.cpp
+  source/ParseOBJ.cpp
+  source/ParsePLY.cpp
   source/PhysicsFrame.cpp
   source/Plane.cpp
   source/prompt.cpp
   source/Quat.cpp
   source/Random.cpp
   source/Ray.cpp
+  source/RayGridIterator.cpp
   source/ReferenceCount.cpp
   source/RegistryUtil.cpp
+  source/SpeedLoad.cpp
   source/Sphere.cpp
   source/stringutils.cpp
   source/System.cpp
@@ -48,16 +56,21 @@ set(g3dlib_STAT_SRCS
   source/TextOutput.cpp
   source/Triangle.cpp
   source/uint128.cpp
+  source/unorm16.cpp
   source/UprightFrame.cpp
   source/Vector2.cpp
+  source/Vector2int32.cpp
+  source/Vector2int16.cpp
   source/Vector3.cpp
   source/Vector4.cpp
+  source/Vector4int16.cpp
 )
 
 if(WIN32)
   include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/dep/zlib
+    ${CMAKE_SOURCE_DIR}/dep/zip
   )
 else()
   include_directories(
@@ -69,4 +82,5 @@ add_library(g3dlib STATIC ${g3dlib_STAT_SRCS})
 
 target_link_libraries(g3dlib
   ${ZLIB_LIBRARIES}
+  ${ZIP_LIBRARIES}
 )

@@ -6,7 +6,7 @@
   @maintainer Morgan McGuire, http://graphics.cs.williams.edu
   @created 2001-04-22
   @edited  2010-01-28
-  Copyright 2000-2010, Morgan McGuire.
+  Copyright 2000-2012, Morgan McGuire.
   All rights reserved.
  */
 
@@ -86,7 +86,7 @@ namespace G3D {
 
   <PRE>
     template<> struct HashTrait<MyEnum> {
-        static size_t equals(const MyEnum& key) const { return reinterpret_cast<size_t>( key ); }
+        static size_t hashCode(const MyEnum& key) const { return reinterpret_cast<size_t>( key ); }
     };
   </PRE>
 
@@ -133,10 +133,12 @@ private:
         // Private to require use of the allocator
         Node(const Key& k, const Value& v, size_t h, Node* n) 
             : entry(k, v), hashCode(h), next(n) {
+                debugAssert((next == NULL) || isValidHeapPointer(next));
         }
 
         Node(const Key& k, size_t h, Node* n) 
             : entry(k), hashCode(h), next(n) {
+                debugAssert((next == NULL) || isValidHeapPointer(next));
         }
 
     public:
@@ -214,9 +216,9 @@ private:
 
         // Allocate a new m_bucket array with the new size
         m_bucket = (Node**)alloc(sizeof(Node*) * newSize);
+        alwaysAssertM(m_bucket != NULL, "MemoryManager::alloc returned NULL. Out of memory.");
         // Set all pointers to NULL
         System::memset(m_bucket, 0, newSize * sizeof(Node*));
-        debugAssertM(m_bucket != NULL, "MemoryManager::alloc returned NULL. Out of memory.");
         // Move each node to its new hash location
         for (size_t b = 0; b < m_numBuckets; ++b) {
             Node* node = oldBucket[b];
@@ -378,21 +380,16 @@ public:
        Returns the average size of non-empty buckets.
     */
     float debugGetAverageBucketSize() const {
-        size_t num = 0;
-        size_t count = 0;
+        uint64 num = 0;
 
         for (size_t b = 0; b < m_numBuckets; b++) {
             Node* node = m_bucket[b];
             if (node != NULL) {
                 ++num;
-                while (node != NULL) {
-                    node = node->next;
-                    ++count;
-                }
             }
         }
 
-        return (float)((double)count / num);
+        return (float)((double)size() / num);
     }
 
     /**
@@ -403,7 +400,7 @@ public:
      many keys to the same code.
      */
     double debugGetLoad() const {
-        return debugGetDeepestBucketSize() / (double)size();
+        return (double)size() / m_numBuckets;
     }
 
     /**
@@ -429,7 +426,7 @@ public:
          Linked list node.
          */
         Node*               node;
-        ThisType*           table;
+
         size_t              m_numBuckets;
         Node**              m_bucket;
         bool                isDone;
@@ -437,13 +434,14 @@ public:
         /**
          Creates the end iterator.
          */
-        Iterator(const ThisType* table) : table(const_cast<ThisType*>(table)) {
+        Iterator() : index(0), node(NULL), m_bucket(NULL) {
             isDone = true;
         }
 
-        Iterator(const ThisType* table, size_t m_numBuckets, Node** m_bucket) :
-            table(const_cast<ThisType*>(table)),
-            m_numBuckets(m_numBuckets),
+        Iterator(size_t numBuckets, Node** m_bucket) :
+            index(0), 
+            node(NULL),
+            m_numBuckets(numBuckets),
             m_bucket(m_bucket) {
             
             if (m_numBuckets == 0) {
@@ -452,26 +450,38 @@ public:
                 return;
             }
 
+#           ifdef G3D_DEBUG
+                for (unsigned int i = 0; i < m_numBuckets; ++i) {
+                    debugAssert((m_bucket[i] == NULL) || isValidHeapPointer(m_bucket[i]));
+                }
+#           endif
+
             index = 0;
             node = m_bucket[index];
+            debugAssert((node == NULL) || isValidHeapPointer(node));
             isDone = false;
             findNext();
+            debugAssert((node == NULL) || isValidHeapPointer(node));
         }
 
         /**
-         Finds the next element, setting isDone if one can't be found.
-         Looks at the current element first.
+         If node is NULL, then finds the next element by searching through the bucket array.
+         Sets isDone if no more nodes are available.
          */
         void findNext() {
             while (node == NULL) {
-                index++;
+                ++index;
                 if (index >= m_numBuckets) {
+                    m_bucket = NULL;
+                    index = 0;
                     isDone = true;
-                    break;
+                    return;
                 } else {
                     node = m_bucket[index];
+                    debugAssert((node == NULL) || isValidHeapPointer(node));
                 }
             }
+            debugAssert(isValidHeapPointer(node));
         }
 
     public:
@@ -482,12 +492,9 @@ public:
         bool operator==(const Iterator& other) const {
             if (other.isDone || isDone) {
                 // Common case; check against isDone.
-                return (isDone == other.isDone) && (other.table == table);
+                return (isDone == other.isDone);
             } else {
-                return
-                    (table == other.table) &&
-                    (node == other.node) && 
-                    (index == other.index);
+                return (node == other.node) && (index == other.index);
             }
         }
 
@@ -495,8 +502,13 @@ public:
          Pre increment.
          */
         Iterator& operator++() {
+            debugAssert(! isDone);
+            debugAssert(node != NULL);
+            debugAssert(isValidHeapPointer(node));
+            debugAssert((node->next == NULL) || isValidHeapPointer(node->next));
             node = node->next;
             findNext();
+            debugAssert(isDone || isValidHeapPointer(node));
             return *this;
         }
 
@@ -514,16 +526,23 @@ public:
         }
 
         Entry* operator->() const {
+            debugAssert(isValidHeapPointer(node));
             return &(node->entry);
         }
 
         operator Entry*() const {
+            debugAssert(isValidHeapPointer(node));
             return &(node->entry);
         }
 
-		bool hasMore() const {
-			return ! isDone;
-		}
+        bool isValid() const {
+            return ! isDone;
+        }
+
+        /** @deprecated  Use isValid */
+        bool hasMore() const {
+            return ! isDone;
+        }
     };
 
 
@@ -533,7 +552,7 @@ public:
      the next element.  Do not modify the table while iterating.
      */
     Iterator begin() const {
-        return Iterator(this, m_numBuckets, m_bucket);
+        return Iterator(m_numBuckets, m_bucket);
     }
 
     /**
@@ -541,7 +560,7 @@ public:
      element.
      */
     const Iterator end() const {
-        return Iterator(this);
+        return Iterator();
     }
 
     /**
@@ -579,20 +598,21 @@ private:
         if (m_numBuckets == 0) {
             return false;
         }
-       size_t code = HashFunc::hashCode(key);
-       size_t b = code % m_numBuckets;
+       
+        const size_t code = HashFunc::hashCode(key);
+        const size_t b = code % m_numBuckets;
 
-       // Go to the m_bucket
-       Node* n = m_bucket[b];
+        // Go to the m_bucket
+        Node* n = m_bucket[b];
 
-       if (n == NULL) {
-           return false;
-       }
+        if (n == NULL) {
+            return false;
+        }
 
-       Node* previous = NULL;
+        Node* previous = NULL;
       
-       // Try to find the node
-       do {
+        // Try to find the node
+        do {
           if ((code == n->hashCode) && EqualsFunc::equals(n->entry.key, key)) {
               // This is the node; remove it
 
@@ -610,6 +630,8 @@ private:
               // Delete the node
               Node::destroy(n, m_memoryManager);
               --m_size;
+
+              //checkIntegrity();
               return true;
           }
 
@@ -617,8 +639,8 @@ private:
           n = n->next;
       } while (n != NULL);
 
+      //checkIntegrity();
       return false;
-      //alwaysAssertM(false, "Tried to remove a key that was not in the table.");
    }
 
 public:
@@ -659,7 +681,7 @@ private:
            node = node->next;
        }
 
-        return NULL;
+       return NULL;
    }
 
 public:
@@ -734,7 +756,6 @@ public:
    }
 
 
-
     /** Called by getCreate() and set() 
         
         \param created Set to true if the entry was created by this method.
@@ -757,6 +778,7 @@ public:
             m_bucket[b] = Node::create(key, code, NULL, m_memoryManager);
             ++m_size;
             created = true;
+            //checkIntegrity();
             return m_bucket[b]->entry;
         }
 
@@ -773,6 +795,7 @@ public:
 
             if ((code == n->hashCode) && EqualsFunc::equals(n->entry.key, key)) {
                // This is the a pre-existing node
+               //checkIntegrity();
                return n->entry;
             }
 
@@ -780,12 +803,18 @@ public:
             ++bucketLength;
         } while (n != NULL);
 
+        // Allow the load factor to rise as the table gets huge
+        const int bucketsPerElement = 
+            (m_size > 50000) ? 3 :
+                ((m_size > 10000) ? 5 :
+                 ((m_size > 5000) ? 10 : 15));
+
         const size_t maxBucketLength = 3;
         // (Don't bother changing the size of the table if all entries
         // have the same hashcode--they'll still collide)
         if ((bucketLength > maxBucketLength) && 
             ! allSameCode && 
-            (m_numBuckets < m_size * 15)) {
+            (m_numBuckets < m_size * bucketsPerElement)) {
 
             // This m_bucket was really large; rehash if all elements
             // don't have the same hashcode the number of buckets is
@@ -808,8 +837,10 @@ public:
         m_bucket[b] = Node::create(key, code, m_bucket[b], m_memoryManager);
         ++m_size;
         created = true;
+
+        //checkIntegrity();
         return m_bucket[b]->entry;
-   }
+    }
 
     Entry& getCreateEntry(const Key& key) {
         bool ignore;
@@ -889,6 +920,7 @@ public:
            Node* node = m_bucket[i];
            while (node != NULL) {
                delete node->entry.key;
+               node->entry.key = NULL;
                node = node->next;
            }
        }

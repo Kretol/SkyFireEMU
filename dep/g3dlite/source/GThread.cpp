@@ -4,7 +4,7 @@
  GThread class.
 
  @created 2005-09-24
- @edited  2005-10-22
+ @edited  2010-09-22
  */
 
 #include "G3D/GThread.h"
@@ -68,9 +68,16 @@ GThreadRef GThread::create(const std::string& name, void (*proc)(void*), void* p
 }
 
 
+
 bool GThread::started() const {
     return m_status != STATUS_CREATED;
 }
+
+
+int GThread::numCores() {
+    return System::numCores();
+}
+
 
 bool GThread::start(SpawnBehavior behavior) {
     
@@ -149,7 +156,10 @@ void GThread::waitForCompletion() {
         ::WaitForSingleObject(m_event, INFINITE);
 #   else
         debugAssert(m_handle);
+        //printf("Before pthread_join\n"); // TODO: remove
+        //printf("m_status = %d\n", m_status);
         pthread_join(m_handle, NULL);
+        //printf("After pthread_join\n"); // TODO: remove
 #   endif
 }
 

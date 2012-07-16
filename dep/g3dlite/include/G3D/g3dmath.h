@@ -65,59 +65,61 @@ inline double __fastcall drand48() {
     return ::rand() / double(RAND_MAX);
 }
 
-#if !defined(_WIN64)
-
-/**
-   Win32 implementation of the C99 fast rounding routines.
+#   ifdef _M_IX86
+    // 32-bit
+        /**
+           Win32 implementation of the C99 fast rounding routines.
    
-   @cite routines are
-   Copyright (C) 2001 Erik de Castro Lopo <erikd AT mega-nerd DOT com>
+           @cite routines are
+           Copyright (C) 2001 Erik de Castro Lopo <erikd AT mega-nerd DOT com>
    
-   Permission to use, copy, modify, distribute, and sell this file for any 
-   purpose is hereby granted without fee, provided that the above copyright 
-   and this permission notice appear in all copies.  No representations are
-   made about the suitability of this software for any purpose.  It is 
-   provided "as is" without express or implied warranty.
-*/
+           Permission to use, copy, modify, distribute, and sell this file for any 
+           purpose is hereby granted without fee, provided that the above copyright 
+           and this permission notice appear in all copies.  No representations are
+           made about the suitability of this software for any purpose.  It is 
+           provided "as is" without express or implied warranty.
+        */
 
-__inline long int lrint (double flt) {
-    int intgr;
 
-    _asm {
-        fld flt
-        fistp intgr
-    };
+         __inline long int lrint (double flt) {
+            int intgr;
 
-    return intgr;
-}
+            _asm {
+                fld flt
+                fistp intgr
+            };
 
-__inline long int lrintf(float flt) {
-    int intgr;
+            return intgr;
+        }
 
-    _asm {
-        fld flt
-        fistp intgr
-    };
+        __inline long int lrintf(float flt) {
+            int intgr;
 
-    return intgr;
-}
+            _asm {
+                fld flt
+                fistp intgr
+            };
 
-#else
+            return intgr;
+        }
+#   else
+    // 64-bit
+
+    __inline long int lrintf(float flt) {        
+        return (long int)(flt + 0.5f);
+    }
 
     __inline long int lrint (double flt) {
-        return (long int)floor(flt+0.5f);
+        return (long int)(flt + 0.5);
     }
 
-    __inline long int lrintf(float flt) {
-        return (long int)floorf(flt+0.5f);
-    }
-
-#endif
-
+#   endif
 #endif
 
 
-#define fuzzyEpsilon (0.00001f)
+#define fuzzyEpsilon64 (0.0000005)
+#define fuzzyEpsilon32 (0.00001f)
+
 /** 
     This value should not be tested against directly, instead
     G3D::isNan() and G3D::isFinite() will return reliable results. */
@@ -148,7 +150,7 @@ inline double twoPi() {
 }
 
 typedef signed char     int8;
-typedef unsigned char	uint8;
+typedef unsigned char    uint8;
 typedef short           int16;
 typedef unsigned short  uint16;
 typedef int             int32;
@@ -207,7 +209,14 @@ inline int iSign(float f) {
     return iSign((double)f);
 }
 
+inline double round(double f) {
+    return floor(f + 0.5f);
+}
 
+inline float round(float f) {
+    return floor(f + 0.5f);
+}
+    
 /** 
     Fast round to integer using the lrint routine.
     Typically 6x faster than casting to integer.
@@ -339,6 +348,7 @@ int highestBit(uint32 x);
  */
 bool fuzzyEq(double a, double b);
 
+
 /** True if a is definitely not equal to b.  
     Guaranteed false if a == b. 
     Possibly false when a != b.*/
@@ -393,6 +403,7 @@ inline double log2(int x) {
  * True if num is a power of two.
  */
 bool isPow2(int num);
+bool isPow2(uint64 num);
 
 bool isOdd(int num);
 bool isEven(int num);
@@ -526,59 +537,59 @@ inline int iCeil (double fValue) {
 
 inline int iClamp(int val, int low, int hi) {
     debugAssert(low <= hi);
-	if (val <= low) {
-		return low;
-	} else if (val >= hi) {
-		return hi;
-	} else {
-		return val;
-	}
+    if (val <= low) {
+        return low;
+    } else if (val >= hi) {
+        return hi;
+    } else {
+        return val;
+    }
 }
 
 //----------------------------------------------------------------------------
 
 inline int16 iClamp(int16 val, int16 low, int16 hi) {
     debugAssert(low <= hi);
-	if (val <= low) {
-		return low;
-	} else if (val >= hi) {
-		return hi;
-	} else {
-		return val;
-	}
+    if (val <= low) {
+        return low;
+    } else if (val >= hi) {
+        return hi;
+    } else {
+        return val;
+    }
 }
 
 //----------------------------------------------------------------------------
 
 inline double clamp(double val, double low, double hi) {
     debugAssert(low <= hi);
-	if (val <= low) {
-		return low;
-	} else if (val >= hi) {
-		return hi;
-	} else {
-		return val;
-	}
+    if (val <= low) {
+        return low;
+    } else if (val >= hi) {
+        return hi;
+    } else {
+        return val;
+    }
 }
 
 inline float clamp(float val, float low, float hi) {
     debugAssert(low <= hi);
-	if (val <= low) {
-		return low;
-	} else if (val >= hi) {
-		return hi;
-	} else {
-		return val;
-	}
+    if (val <= low) {
+        return low;
+    } else if (val >= hi) {
+        return hi;
+    } else {
+        return val;
+    }
 }
 //----------------------------------------------------------------------------
 
 inline int iWrap(int val, int hi) {
-	if (val < 0) {
-		return ((val % hi) + hi) % hi;
-	} else {
-		return val % hi;
-	}
+    if (val < 0) {
+        return ((val % hi) + hi) % hi;
+    } else {
+        return val % hi;
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -651,11 +662,11 @@ inline double aTan2 (double fY, double fX) {
 inline double sign (double fValue) {
     if (fValue > 0.0) {
         return 1.0;
-	}
+    }
 
     if (fValue < 0.0) {
         return -1.0;
-	}
+    }
 
     return 0.0;
 }
@@ -663,11 +674,11 @@ inline double sign (double fValue) {
 inline float sign (float fValue) {
     if (fValue > 0.0f) {
         return 1.0f;
-	}
+    }
 
     if (fValue < 0.0f) {
         return -1.0f;
-	}
+    }
 
     return 0.0f;
 }
@@ -759,6 +770,16 @@ inline bool isPow2(int num) {
     return ((num & -num) == num);
 }
 
+inline bool isPow2(uint64 x) {
+    // See http://www.exploringbinary.com/ten-ways-to-check-if-an-integer-is-a-power-of-two-in-c/, method #9
+    return ((x != 0) && !(x & (x - 1)));
+}
+
+inline bool isPow2(uint32 x) {
+    // See http://www.exploringbinary.com/ten-ways-to-check-if-an-integer-is-a-power-of-two-in-c/, method #9
+    return ((x != 0) && !(x & (x - 1)));
+}
+
 inline bool isOdd(int num) {
     return (num & 1) == 1;
 }
@@ -801,10 +822,29 @@ inline double eps(double a, double b) {
     (void)b;
     const double aa = abs(a) + 1.0;
     if (aa == inf()) {
-        return fuzzyEpsilon;
+        return fuzzyEpsilon64;
     } else {
-        return fuzzyEpsilon * aa;
+        return fuzzyEpsilon64 * aa;
     }
+}
+
+inline float eps(float a, float b) {
+    // For a and b to be nearly equal, they must have nearly
+    // the same magnitude.  This means that we can ignore b
+    // since it either has the same magnitude or the comparison
+    // will fail anyway.
+    (void)b;
+    const float aa = abs(a) + 1.0f;
+    if (aa == inf()) {
+        return fuzzyEpsilon32;
+    } else {
+        return fuzzyEpsilon32 * aa;
+    }
+}
+
+
+inline bool fuzzyEq(float a, float b) {
+    return (a == b) || (abs(a - b) <= eps(a, b));
 }
 
 inline bool fuzzyEq(double a, double b) {

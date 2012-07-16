@@ -11,20 +11,20 @@
 #include "G3D/HashTrait.h"
 #include "G3D/BinaryInput.h"
 #include "G3D/BinaryOutput.h"
+#include "G3D/Any.h"
 
 /**
 \def G3D_DECLARE_ENUM_CLASS_METHODS
 
   \brief Creates a series of methods that turn a class into a scoped enumeration.
 
-  Uses the "Intelligent Enum" design pattern 
-  http://www.codeguru.com/cpp/cpp/cpp_mfc/article.php/c4001/
+  Example of use:
 
-  Enum classes are initialized to their zero value by default.
-
-  You must implement the following method before calling G3D_DECLARE_ENUM_CLASS_METHODS, as either:
-
-  <pre>
+  \code
+  class Resource {
+  public:
+    enum Value {FUEL, FOOD, WATER} value;
+    
     static const char* toString(int i, Value& v) {
         static const char* str[] = {"FUEL", "FOOD", "WATER", NULL}; // Whatever your enum values are
         static const Value val[] = {FUEL, FOOD, WATER};             // Whatever your enum values are
@@ -34,7 +34,16 @@
         }
         return s;
     }
-  </pre>
+
+    G3D_DECLARE_ENUM_CLASS_METHODS(Resource);
+  };
+  G3D_DECLARE_ENUM_CLASS_HASHCODE(Resource);
+  \endcode
+
+  Uses the "Intelligent Enum" design pattern 
+  http://www.codeguru.com/cpp/cpp/cpp_mfc/article.php/c4001/
+
+  Enum classes are initialized to their zero value by default.
 
   See GLG3D/GKey.h for an example.
   \sa G3D_DECLARE_ENUM_CLASS_HASHCODE
@@ -42,18 +51,19 @@
 #define G3D_DECLARE_ENUM_CLASS_METHODS(Classname)\
 private: \
     void fromString(const std::string& x) {\
-        Value v;\
+        Value v = (Value)0;\
         const char* s;\
         int i = 0;\
 \
         do {\
             s = toString(i, v);\
+            if (s == NULL) { return; /** Needed to get correct compilation on gcc */ } \
             if (x == s) {\
                 value = v;\
                 return;\
             }\
             ++i;\
-        } while (s);\
+        } while (true);\
     }\
 \
 public:\
@@ -76,12 +86,12 @@ public:\
         fromString(x);\
     }\
 \
-    Classname(const Any& a) : value((Value)0) {\
+    explicit Classname(const G3D::Any& a) : value((Value)0) {   \
         fromString(a.string());\
     }\
 \
-    operator Any() const {\
-        return Any(toString());\
+    G3D::Any toAny() const {                    \
+        return G3D::Any(toString());            \
     }\
 \
     Classname(char v) : value((Value)v) {}\
@@ -95,10 +105,15 @@ public:\
     /** Support cast back to the Value type, which is needed to allow implicit assignment inside unions. */\
     /*inline operator Value() const {
         return value;
-	}*/\
+    }*/\
 \
     operator int() const {\
         return (int)value;\
+    }\
+\
+    Classname& operator=(const Any& a) {\
+        value = Classname(a).value;\
+        return *this;\
     }\
 \
     bool operator== (const Classname other) const {\
@@ -181,15 +196,16 @@ public:\
         return (unsigned int)value;\
     }\
 \
-    void serialize(BinaryOutput& b) const {\
+    void serialize(G3D::BinaryOutput& b) const {    \
         b.writeInt32(value);\
     }\
 \
-    void deserialize(BinaryInput& b) {\
+    void deserialize(G3D::BinaryInput& b) {         \
         value = (Value)b.readInt32();\
     }
 
 /** \def G3D_DECLARE_ENUM_CLASS_HASHCODE
+   Must be used at top level (i.e., not inside a class or namespace), with a fully qualified class name.
 */
 #define G3D_DECLARE_ENUM_CLASS_HASHCODE(Classname)\
 template <> struct HashTrait<Classname::Value>                                              \

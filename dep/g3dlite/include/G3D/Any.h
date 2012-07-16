@@ -1,13 +1,13 @@
 /**
- @file Any.h
+ \file Any.h
   
- @author Morgan McGuire, Shawn Yarbrough, and Corey Taylor
- @maintainer Morgan McGuire
+ \author Morgan McGuire, Shawn Yarbrough, and Corey Taylor
+ \maintainer Morgan McGuire
   
- @created 2006-06-11
- @edited  2010-03-16
+ \created 2006-06-11
+ \edited  2011-10-09
 
- Copyright 2000-2010, Morgan McGuire.
+ Copyright 2000-2012, Morgan McGuire.
  All rights reserved.
  */
 
@@ -18,6 +18,7 @@
 #include "G3D/Table.h"
 #include "G3D/Array.h"
 #include "G3D/AtomicInt32.h"
+#include "G3D/stringutils.h"
 #include <string>
 
 // needed for Token
@@ -115,20 +116,7 @@ Vector3::Vector3(const Any& any) {
 }
 </pre>
 
-It is often convenient to iterate through the table portion:
-
-<pre>
-    for (Any::AnyTable::Iterator it = any.table().begin(); it.hasMore(); ++it) {
-        const std::string& k = toLower(it->key);
-        if (key == "hello") {
-           ...
-        } else if (key == "goodbye") {
-           ...
-        } else {
-           any.verify(false, "Unsupported key: " + it->key);
-        }
-    }
-</pre>
+It is often convenient to iterate through the table portion using G3D::AnyTableReader.
 
 \section BNF
 Serialized format BNF:
@@ -174,6 +162,8 @@ which also convenient when commenting out the last element.
 
 The serializer indents four spaces for each level of nesting. 
 Tables are written with the keys in alphabetic order.
+
+\sa G3D::AnyTableReader
 */
 class Any {
 public:
@@ -323,31 +313,49 @@ private:
      This proxy can be copied exactly once on return from operator[].*/
     Any(const std::string& key, Data* data);
 
-    inline bool isPlaceholder() const {
+    bool isPlaceholder() const {
         return ! m_placeholderName.empty();
     }
+    
+    void _append(const Any& v0);
+    void _append(const Any& v0, const Any& v1);
+    void _append(const Any& v0, const Any& v1, const Any& v2);
+    void _append(const Any& v0, const Any& v1, const Any& v2, const Any& v3);
+    Any  _get(const std::string& key, const Any& defaultVal) const;
+    void _set(const std::string& key, const Any& val);
+
+    void _parse(const std::string& src);
 
 public:
-
-    /** Base class for all Any exceptions.*/
-    class Exception {
-    public:
-        virtual ~Exception() {}
-    };
 
     /** Thrown by operator[] when a key is not present in a const table. */
     class KeyNotFound : public ParseError {
     public:
         std::string key;
+
+        KeyNotFound(const Data* data) {
+            if (data) {
+                filename  = data->source.filename;
+                line      = data->source.line;
+                character = data->source.character;
+            }
+        }
     };
 
     /** Thrown by operator[] when an array index is not present. */
-    class IndexOutOfBounds : public Exception {
+    class IndexOutOfBounds : public ParseError {
     public:
         int     index;
         int     size;
-        inline IndexOutOfBounds() : index(0), size(0) {}
-        inline IndexOutOfBounds(int i, int s) : index(i), size(s) {}
+        IndexOutOfBounds() : index(0), size(0) {}
+        IndexOutOfBounds(const Data* data, int i, int s) : index(i), size(s) {
+            if (data) {
+                filename  = data->source.filename;
+                line      = data->source.line;
+                character = data->source.character;
+            }
+            message = format("Index out of bounds: index = %d, array size = %d", i, s);
+        }
     };
 
     /** NONE constructor */
@@ -359,70 +367,79 @@ public:
     Any(const Any& x);
 
     /** NUMBER constructor */
-    Any(double x);
+    explicit Any(double x);
 
-#ifdef G3D_32BIT
-    /** NUMBER constructor */
-    Any(int64 x);
-#endif    // G3D_32BIT
+    explicit Any(float x);
 
-#if 0
+#if defined(G3D_32BIT) || defined(_MSC_VER)
     /** NUMBER constructor */
-    Any(int32 x);
-#endif    // 0
+    explicit Any(int64 x) : m_type(NUMBER), m_simpleValue((double)x), m_data(NULL) {}
+#endif
 
     /** NUMBER constructor */
-    Any(long x);
+    explicit Any(long x);
 
     /** NUMBER constructor */
-    Any(int x);
+    explicit Any(int x);
 
     /** NUMBER constructor */
-    Any(short x);
+    explicit Any(char x);
+
+    /** NUMBER constructor */
+    explicit Any(short x);
 
     /** BOOLEAN constructor */
-    Any(bool x);
+    explicit Any(bool x);
 
     /** STRING constructor */
-    Any(const std::string& x);
+    explicit Any(const std::string& x);
 
     /** STRING constructor */
-    Any(const char* x);
+    explicit Any(const char* x);
 
     /** \a t must be ARRAY or TABLE */
-    Any(Type t, const std::string& name = "");
-    
+    explicit Any(Type t, const std::string& name = "");
+
+    /** Extensible constructor: call the toAny() method of any class. */
+    template<class T>
+    explicit Any(const T& v) : m_type(NONE), m_data(NULL) {
+        *this = v.toAny();
+    }
+
     ~Any();
 
     /** Removes the comment and name */
     Any& operator=(const Any& x);
 
-    /** Removes the comment and name */
-    Any& operator=(double x);
-
-    /** Removes the comment and name */
-    Any& operator=(int x);
-
-    /** Removes the comment and name */
-    Any& operator=(bool x);
-
-    /** Removes the comment and name */
-    Any& operator=(const std::string& x);
-
-    /** Removes the comment and name */
-    Any& operator=(const char* x);
-
     /** \a t must be ARRAY, TABLE, or NONE. Removes the comment and name */
     Any& operator=(Type t);
+
+    /** Assigns from an array.  Assumes that T can be converted to Any.  Removes the comment and name */
+    template<class T>
+    Any& operator=(const Array<T>& array) {
+        *this = Any::ARRAY;
+        resize(array.size());
+        for (int i = 0; i < array.size(); ++i) {
+            this->operator [](i) = array[i];
+        }
+        return *this;
+    }
+
+    /** Removes the comment and name */
+    template<class T>
+    Any& operator=(const T& v) {
+        *this = Any(v);
+        return *this;
+    }
 
     Type type() const;
 
     /** Same as deserialize or load, but operates on a string instead
         of a stream or file.
 
-      \sa deserialize, load
+      \sa deserialize, load, unparse
       */
-    void parse(const std::string& src);
+    static Any parse(const std::string& src);
 
     std::string unparse() const;
     
@@ -438,30 +455,36 @@ public:
     const std::string& string() const;
     bool boolean() const;
 
-    /** If a valid string, takes the string value and creates a fully qualified filename.
-        If not found, the returned string is empty.
+    /** If a valid string, takes the string value and creates a fully
+        qualified filename.
 
         The file is searched for the following ways:
         
         - In the directory from which the Any was loaded.
         - By calling System::findDataFile as you would with other data files.
-     */
-    std::string resolveStringAsFilename() const;
 
+        Strings that begin with '<' and end with '>' are treated as
+        escape sequences and are returned unmodifed.
+     */
+    std::string resolveStringAsFilename(bool errorIfNotFound = true) const;
 
     /** If this is named ARRAY or TABLE, returns the name. */
     const std::string& name() const;
 
-    /** If this is named ARRAY or TABLE, returns true if the name begins with \a s.  The comparision is case insensitive. */
+    /** If this is named ARRAY or TABLE, returns true if the name
+        begins with \a s.  The comparision is case insensitive. */
     bool nameBeginsWith(const std::string& s) const;
 
-    /** If this is named ARRAY or TABLE, returns true if the name begins with \a s.  The comparision is case insensitive. */
+    /** If this is named ARRAY or TABLE, returns true if the name
+        begins with \a s.  The comparision is case insensitive. */
     bool nameBeginsWith(const char* s) const;
 
-    /** If this is named ARRAY or TABLE, returns true if the name is \a s.  The comparision is case insensitive. */
+    /** If this is named ARRAY or TABLE, returns true if the name is
+        \a s.  The comparision is case insensitive. */
     bool nameEquals(const std::string& s) const;
 
-    /** If this is named ARRAY or TABLE, returns true if the name is\a s.  The comparision is case insensitive. */
+    /** If this is named ARRAY or TABLE, returns true if the name is\a
+        s.  The comparision is case insensitive. */
     bool nameEquals(const char* s) const;
 
     /** \brief Set the name used when serializing an ARRAY or TABLE.
@@ -503,12 +526,29 @@ public:
 
     /** Directly exposes the underlying data structure for an ARRAY. */
     const Array<Any>& array() const;
-    void append(const Any& v0);
-    void append(const Any& v0, const Any& v1);
-    void append(const Any& v0, const Any& v1, const Any& v2);
-    void append(const Any& v0, const Any& v1, const Any& v2, const Any& v3);
 
-    /** Directly exposes the underlying data structure for table.*/
+    template<class T0>
+    void append(const T0& v0) {
+        _append(Any(v0));
+    }
+
+    template<class T0, class T1>
+    void append(const T0& v0, const T1& v1) {
+        _append(Any(v0), Any(v1));
+    }
+
+    template<class T0, class T1, class T2>
+    void append(const T0& v0, const T1& v1, const T2& v2) {
+        _append(Any(v0), Any(v1), Any(v2));
+    }
+
+    template<class T0, class T1, class T2, class T3>
+    void append(const T0& v0, const T1& v1, const T2& v2, const T3& v3) {
+        _append(Any(v0), Any(v1), Any(v2), Any(v3));
+    }
+
+    /** Directly exposes the underlying data structure for table.
+    \sa G3D::AnyTableReader*/
     const Table<std::string, Any>& table() const;
 
     /** For a table, returns the element for \a key. Throws KeyNotFound
@@ -518,7 +558,7 @@ public:
 
     // Needed to prevent the operator[](int) overload from catching
     // string literals
-    inline const Any& operator[](const char* key) const {
+    const Any& operator[](const char* key) const {
         return operator[](std::string(key));
     }
 
@@ -554,13 +594,19 @@ public:
     
     /** For a table, returns the element for key \a x and \a
         defaultVal if it does not exist. */
-    const Any& get(const std::string& key, const Any& defaultVal) const;
+    template<class T>
+    Any get(const std::string& key, const T& defaultVal) const {
+        return _get(key, Any(defaultVal));
+    }
 
     /** Returns true if this key is in the TABLE.  Illegal to call on an object that is not a TABLE. */
     bool containsKey(const std::string& key) const;
     
     /** For a table, assigns the element for key k. */
-    void set(const std::string& key, const Any& val);
+    template<class T>
+    void set(const std::string& key, const T& val) {
+        _set(key, Any(val));
+    }
 
     /** for an ARRAY, resizes and returns the last element */
     Any& next();
@@ -572,13 +618,63 @@ public:
 
     /** True if the Anys are exactly equal, ignoring comments.  Applies deeply on arrays and tables. */
     bool operator==(const Any& x) const;
+
+    bool operator==(const std::string& s) const {
+        return *this == Any(s);
+    }
+
+    bool operator==(const double& v) const {
+        return *this == Any(v);
+    }
+
+    bool operator==(int v) const {
+        return *this == Any(v);
+    }
+
+    bool operator==(bool v) const {
+        return *this == Any(v);
+    }
+
     bool operator!=(const Any& x) const;
 
+    bool operator!=(const std::string& s) const {
+        return *this != Any(s);
+    }
+
+    bool operator!=(const double& v) const {
+        return *this != Any(v);
+    }
+
+    bool operator!=(int v) const {
+        return *this != Any(v);
+    }
+
+    bool operator!=(bool v) const {
+        return *this != Any(v);
+    }
+
     operator int() const;
+    operator uint32() const;
     operator float() const;
     operator double() const;
     operator bool() const;
     operator std::string() const;
+
+    operator char() const {
+        return char(int(*this));
+    }
+
+    operator uint8() const {
+        return uint8(int(*this));
+    }
+
+    operator int16() const {
+        return int16(int(*this));
+    }
+
+    operator uint16() const {
+        return uint16(int(*this));
+    }
 
     /** Resize to \a n elements, where new elements are NIL 
        It is an error to call this method if this is not an Any::ARRAY */
@@ -590,18 +686,37 @@ public:
     void clear();
 
     /** Parse from a file.
-     \sa deserialize, parse */
+     \sa deserialize, parse, fromFile, loadIfExists
+     */
     void load(const std::string& filename);
+
+    /** Load a new Any from \a filename. \sa load, save, loadIfExists */
+    static Any fromFile(const std::string& filename);
+
+    /** Load \a filename file if it exists, otherwise do not modify this */
+    void loadIfExists(const std::string& filename);
 
     /** Uses the serialize method. */
     void save(const std::string& filename) const;
 
     void serialize(TextOutput& to) const;
+
+    void serialize(class BinaryOutput& b) const;
+
     /** Parse from a stream.
      \sa load, parse */
     void deserialize(TextInput& ti);
 
+    void deserialize(class BinaryInput& b);
+
     const Source& source() const;
+
+    /** Removes this key from the Any, which must be a table. */
+    void remove(const std::string& key);
+
+    /** Removes this key from the Any, which must be an array, and
+        shifts other elements down to maintain order. */
+    void remove(int index);
 
     /** Throws a ParseError if \a value is false.  Useful for quickly
         creating parse rules in classes that deserialize from Any.
@@ -609,13 +724,49 @@ public:
     void verify(bool value, const std::string& message = "") const;
 
 
-    /** Verifies that the name <i>begins with</i> identifier \a n (case insensitive). 
+    /** Verifies that the name is identifier \a n (case sensitive). 
         It may contain identifier operators after this */
     void verifyName(const std::string& n) const;
 
-    /** Verifies that the name <i>begins with</i> identifier \a n or \a m (case insensitive). 
+    /** Verifies that the name is identifier \a n or \a m (case sensitive). 
         It may contain identifier operators after this */
     void verifyName(const std::string& n, const std::string& m) const;
+
+    /** Verifies that the name is identifier \a n or \a m or \a p (case sensitive). 
+        It may contain identifier operators after this */
+    void verifyName(const std::string& n, const std::string& m, const std::string& p) const;
+
+    /** Verifies that the name is identifier \a n or \a m or \a p or \a q (case sensitive). 
+        It may contain identifier operators after this */
+    void verifyName(const std::string& n, const std::string& m, const std::string& p, const std::string& q) const;
+
+    /** Verifies that the name <i>begins with</i> identifier \a n (case sensitive). 
+        It may contain identifier operators after this */
+    void verifyNameBeginsWith(const std::string& n) const;
+
+    /** Verifies that the name <i>begins with</i> identifier \a n or \a m (case sensitive). 
+        It may contain identifier operators after this */
+    void verifyNameBeginsWith(const std::string& n, const std::string& m) const;
+
+    /** Verifies that the name <i>begins with</i> identifier \a n or \a m or \a p (case sensitive). 
+        It may contain identifier operators after this */
+    void verifyNameBeginsWith(const std::string& n, const std::string& m, const std::string& p) const;
+
+    /** Verifies that the name <i>begins with</i> identifier \a n or \a m or \a p or \a q (case sensitive). 
+        It may contain identifier operators after this */
+    void verifyNameBeginsWith(const std::string& n, const std::string& m, const std::string& p, const std::string& q) const;
+
+    /** Verifies that the name <i>begins with</i> identifier \a n or \a m or \a p or \a q or \a r (case sensitive). 
+        It may contain identifier operators after this */
+    void verifyNameBeginsWith(const std::string& n, const std::string& m, const std::string& p, const std::string& q, const std::string& r) const;
+
+    /** Verifies that the name <i>begins with</i> identifier \a n or \a m or \a p or \a q or \a r or \a s (case sensitive). 
+        It may contain identifier operators after this */
+    void verifyNameBeginsWith(const std::string& n, const std::string& m, const std::string& p, const std::string& q, const std::string& r, const std::string& s) const;
+
+    /** Verifies that the name <i>begins with</i> identifier \a n or \a m or \a p or \a q or \a r or \a s or \a t(case sensitive). 
+        It may contain identifier operators after this */
+    void verifyNameBeginsWith(const std::string& n, const std::string& m, const std::string& p, const std::string& q, const std::string& r, const std::string& s, const std::string& t) const;
 
     /** Verifies that the type is \a t. */
     void verifyType(Type t) const;
@@ -629,6 +780,27 @@ public:
     /** Verifies that the size is exactly \a s */
     void verifySize(int s) const;
 
+    /** Assumes that Any(T) is well-defined, e.g., by T defining a
+        T::toAny() method. */
+    template<class T>
+    explicit Any(const Array<T>& array, const std::string& name = "") : m_type(ARRAY), m_data(NULL) {
+        setName(name);
+        resize(array.size());
+        for (int i = 0; i < array.size(); ++i) {
+            (*this)[i] = Any(array[i]);
+        }
+    }
+
+    /** Assumes that T defines T(const Any&) */
+    template<class T>
+    void getArray(Array<T>& array) const {
+        verifyType(ARRAY);
+        array.resize(size());
+        for (int i = 0; i < array.size(); ++i) {
+            array[i] = T((*this)[i]);
+        }
+    }
+
 private:
 
     void deserializeTable(TextInput& ti);
@@ -636,6 +808,183 @@ private:
 
 };    // class Any
 
+
+
+
+/**
+   Convenient iteration over the keys of a Any::TABLE, usually
+   for implementing construction of an object from an Any.
+
+   Getting an element using either iteration or explicit requests
+   consumes that element from the iterator (but not from the Any!)
+   It is an error to consume the same element more than once from
+   the same iterator.
+
+    \code
+    AnyTableReader r(a);
+    r.getIfPresent("enabled", enabled);
+    r.getIfPresent("showSamples", showSamples);
+    r.get("showTiles", showTiles);
+
+    r.verifyDone();
+    \endcode
+
+    \beta
+*/
+class AnyTableReader {
+private:
+   Any              m_any;
+   Set<std::string> m_alreadyRead;
+public:
+    
+    /** Verifies that \a is a TABLE with the given \a name. */
+    AnyTableReader(const std::string& name, const Any& a) : m_any(a) {
+        try {
+            m_any.verifyType(Any::TABLE);
+            m_any.verifyName(name);
+        } catch (const ParseError& e) {
+            // If an exception is thrown, the destructors will not be 
+            // invoked automatically.
+            m_any.~Any();
+            m_alreadyRead.~Set();
+            throw e;
+        }
+    }
+
+    /** Verifies that \a is a TABLE. */
+    AnyTableReader(const Any& a) : m_any(a) {
+        try {
+            m_any.verifyType(Any::TABLE);
+        } catch (const ParseError& e) {
+            // If an exception is thrown, the destructors will not be 
+            // invoked automatically.
+            m_any.~Any();
+            m_alreadyRead.~Set();
+            throw e;
+        }
+    }
+
+    bool hasMore() const {
+        return m_any.size() > m_alreadyRead.size();
+    }
+
+    /** Verifies that all keys have been read. */
+    void verifyDone() const {
+        if (hasMore()) {
+            // Generate all keys
+            // Remove the ones we've read
+            // Assert the rest
+          //  any.verify("");
+        }
+    }
+
+    /** Return the underlying Any. */
+    const Any& any() const {
+        return m_any;
+    }
+
+#if 0
+    /** Returns the current key */
+    const std::string& key() const;
+
+    /** Returns the current value */
+    const Any& value() const;
+
+    AnyKeyIterator& operator++();
+#endif   
+
+    /** \copydoc get(const std::string& s, ValueType& v) */
+    void get(const std::string& s, std::string& v) {
+        v = m_any[s].string();
+        m_alreadyRead.insert(s);
+    }
+
+    /** \copydoc get(const std::string& s, ValueType& v) */
+    void get(const std::string& s, uint8& v) {
+        v = uint8(m_any[s].number());
+        m_alreadyRead.insert(s);
+    }
+
+    /** \copydoc get(const std::string& s, ValueType& v) */
+    void get(const std::string& s, uint16& v) {
+        v = uint16(m_any[s].number());
+        m_alreadyRead.insert(s);
+    }
+
+    /** Read an entire array at once.*/
+    template<class T>
+    void get(const std::string& s, Array<T>& v) {
+        m_any[s].getArray(v);
+        m_alreadyRead.insert(s);
+    }
+    
+    /** If key \s appears in the any, reads its value into \a v and 
+        removes that key from the ones available to iterate over.
+
+        If key \s does not appear in the any, throws a G3D::ParseError.
+
+        Assumes that if key \s appears in the any it has not already been extracted
+        by this iterator.  If it has been read before, an assertion will fail in debug mode.
+
+      */
+    template<class ValueType>
+    void get(const std::string& s, ValueType& v) {
+        v = m_any[s];
+        m_alreadyRead.insert(s);
+    }
+
+    /** Same as get() */
+    const Any& operator[](const std::string& s) {
+        m_alreadyRead.insert(s);
+        return m_any[s];
+    }
+
+    /** Get the value associated with a key only if the key is actually present.
+    
+        If key \s appears in the any, reads its value into \a v and 
+        removes that key from the ones available to iterate over.
+
+        If key \s does not appear in the any, does nothing.
+
+        Assumes that if key \s appears in the any it has not already been extracted
+        by this iterator.  If it has been read before, an assertion will fail in debug mode.
+
+        \return True if the value was read.
+      */
+    template<class ValueType>
+    bool getIfPresent(const std::string& s, ValueType& v) {
+        if (m_any.containsKey(s)) {
+            debugAssertM(! m_alreadyRead.contains(s), "read twice");
+
+            get(s, v);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /** \return True if \a s is in the table and has not yet been read
+        using get() or getIfPresent(). */
+    bool containsUnread(const std::string& s) const {
+        return m_any.containsKey(s) && ! m_alreadyRead.contains(s);
+    }
+
+};
+
 }    // namespace G3D
+
+
+/**
+  \def PARSE_ANY(expression)
+  
+  \brief Create an G3D::Any from an unquoted string.
+
+  e.g.,
+  \code
+     Any x = PARSE_ANY( { a = 3.0; b = false; } );
+  \endcode
+ */
+#define PARSE_ANY(x) Any::parse(#x)
+
 
 #endif

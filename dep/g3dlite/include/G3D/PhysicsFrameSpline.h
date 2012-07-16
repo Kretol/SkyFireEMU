@@ -28,8 +28,16 @@ public:
     /** Clear and then reset all values from the any */
     PhysicsFrameSpline& operator=(const Any& any);
 
+    bool operator==(const PhysicsFrameSpline& a) const;
+ 
+    bool operator!=(const PhysicsFrameSpline& a) const {
+        return ! ((*this) == a);
+    }
+
     virtual void correct(PhysicsFrame& frame) const;
     virtual void ensureShortestPath(PhysicsFrame* A, int N) const;
+
+    Any toAny() const;
 };
 
 }

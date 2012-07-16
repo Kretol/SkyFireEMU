@@ -1,20 +1,20 @@
 /**
-  @file Box.h
+  \file G3D/Box.h
  
   Box class
  
-  @maintainer Morgan McGuire, http://graphics.cs.williams.edu
+  \maintainer Morgan McGuire, http://graphics.cs.williams.edu
  
-  @cite Portions based on Dave Eberly's Magic Software Library at <A HREF="http://www.magic-software.com">http://www.magic-software.com</A>
-  @created 2001-06-02
-  @edited  2007-06-05
+  \cite Portions based on Dave Eberly's Magic Software Library at <A HREF="http://www.magic-software.com">http://www.magic-software.com</A>
+  \created 2001-06-02
+  \edited  2011-06-10
 
-  Copyright 2000-2006, Morgan McGuire.
+  Copyright 2000-2012, Morgan McGuire.
   All rights reserved.
  */
 
-#ifndef G3D_BOX_H
-#define G3D_BOX_H
+#ifndef G3D_Box_h
+#define G3D_Box_h
 
 #include "G3D/platform.h"
 #include "G3D/Vector3.h"
@@ -26,11 +26,9 @@ namespace G3D {
 class CoordinateFrame;
 
 /**
- An arbitrary 3D box, useful as a bounding box. 
+ \brief An arbitrary (oriented) 3D box, useful as a bounding box. 
 
-
-  To construct a box from a coordinate frame, center and extent, use the idiom:
-
+ To construct a box from a coordinate frame, center and extent, use the idiom:
  <CODE>Box box = cframe.toObjectSpace(Box(center - extent/2, center + extent/2));</CODE>
  */
 class Box {
@@ -49,14 +47,14 @@ private:
        front    back (seen through front)
       </PRE>
      */
-    Vector3 _corner[8];
+    Point3 _corner[8];
 
     /**
      Unit axes.
      */
     Vector3 _axis[3];
    
-    Vector3 _center;
+    Point3  _center;
 
     /**
      Extent along each axis.
@@ -64,6 +62,7 @@ private:
     Vector3 _extent;
 
     float  _area;
+
     float  _volume;
 
     void init(
@@ -80,19 +79,18 @@ public:
     /**
       Constructs a box from two opposite corners.
      */
-    Box(
-        const Vector3&      min,
+    Box(const Vector3&      min,
         const Vector3&      max);
 
     static Box inf();
 
-	Box(class BinaryInput& b);
+    Box(class BinaryInput& b);
 
     Box(const class AABox& b);
 
-	void serialize(class BinaryOutput& b) const;
-	void deserialize(class BinaryInput& b);
-
+    void serialize(class BinaryOutput& b) const;
+    void deserialize(class BinaryInput& b);
+    
     /**
      Returns the object to world transformation for 
      this box.  localFrame().worldToObject(...) takes
@@ -150,14 +148,14 @@ public:
         Vector3&            v3) const;
 
 
-	/**
+    /**
       See AABox::culledBy
-	 */
+     */
     bool culledBy
     (
-     const Array<Plane>&		plane,
+     const Array<Plane>&        plane,
      int32&                             cullingPlaneIndex,
-     const uint32  			testMask,
+     const uint32              testMask,
      uint32&                            childMask) const;
 
     /**
@@ -165,9 +163,9 @@ public:
      */
     bool culledBy
     (
-     const Array<Plane>&		plane,
+     const Array<Plane>&        plane,
      int32&                             cullingPlaneIndex = dummy,
-     const uint32  			testMask	  = -1) const;
+     const uint32              testMask      = -1) const;
 
     bool contains(
         const Vector3&      point) const;

@@ -162,8 +162,15 @@ public:
 
 /**
  Use ReferenceCountedPointer<T> in place of T* in your program.
- T must subclass ReferenceCountedObject.
-@deprecated To be replaced by boost::shared_ptr in 7.0
+ T must subclass ReferenceCountedObject.  For convenience, most
+ classes define a "Ref" typedef member:
+
+ <code>
+  class Foo : public ReferenceCountedObject {
+  public:
+     typedef ReferenceCountedPointer<Foo> Ref;
+  };
+ </code>
  */
 template <class T>
 class ReferenceCountedPointer {
@@ -225,7 +232,7 @@ private:
             if (x != NULL) {
                 debugAssert(G3D::isValidHeapPointer(x));
 
-		        m_pointer = x;
+                m_pointer = x;
 
                 // Note that the ref count can be zero if this is the
                 // first pointer to it
@@ -262,11 +269,11 @@ public:
     /**
       Explicit cast to a subclass.  Acts like dynamic cast; the result will be NULL if
       the cast cannot succeed.  Not supported on VC6.
-      <pre>
-        SubRef  s = new Sub();
-        BaseRef b = s;
+      <code>
+        Sub::Ref  s = new Sub();
+        Base::Ref b = s;
         s = b.downcast<Sub>();   // Note that the template argument is the object type, not the pointer type.
-      </pre>
+      </code>
       */
     template <class S>
     ReferenceCountedPointer<S> downcast() {
@@ -277,6 +284,18 @@ public:
     const ReferenceCountedPointer<S> downcast() const {
         return ReferenceCountedPointer<S>(dynamic_cast<const S*>(m_pointer));
     }
+    
+    /** \a Returns true if this is a non-NULL pointer to an object of type \a S.
+        <code>
+        GuiWindow::Ref c = ...;
+        if (c.pointsToA<CameraControlWindow>()) { ... }
+        </code>
+     */
+    template <class S>
+    bool pointsToA() const {
+        return dynamic_cast<const S*>(m_pointer) != NULL;
+    }
+
 #   endif
 
     // We need an explicit version of the copy constructor as well or 

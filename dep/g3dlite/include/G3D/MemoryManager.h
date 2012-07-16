@@ -20,7 +20,7 @@ namespace G3D {
    Abstraction of memory management.
    Default implementation uses G3D::System::malloc and is threadsafe.
 
-   \sa CRTMemoryManager, AlignedMemoryManager, AreaMemoryManager */
+   \sa LargePoolMemoryManager, CRTMemoryManager, AlignedMemoryManager, AreaMemoryManager */
 class MemoryManager : public ReferenceCountedObject {
 protected:
 
@@ -72,7 +72,8 @@ public:
 };
 
 
-/** MemoryManager implemented using the C runtime. */
+/** A MemoryManager implemented using the C runtime. Not recommended
+    for general use; this is largely for debugging. */
 class CRTMemoryManager : public MemoryManager {
 protected:
     CRTMemoryManager();
