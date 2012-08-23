@@ -755,7 +755,7 @@ int32 AuraEffect::CalculateAmount(Unit* caster)
     return amount;
 }
 
-void AuraEffect::CalculatePeriodic(Unit* caster, bool create, bool load)
+void AuraEffect::CalculatePeriodic(Unit* caster, bool resetPeriodicTimer /*= true*/, bool load /*= false*/)
 {
     m_amplitude = m_spellInfo->Effects[m_effIndex].Amplitude;
 
@@ -840,9 +840,6 @@ void AuraEffect::CalculatePeriodic(Unit* caster, bool create, bool load)
         // reset periodic timer on aura create or on reapply when aura isn't dot
         // possibly we should not reset periodic timers only when aura is triggered by proc
         // or maybe there's a spell attribute somewhere
-        bool resetPeriodicTimer = create
-            || ((GetAuraType() != SPELL_AURA_PERIODIC_DAMAGE) && (GetAuraType() != SPELL_AURA_PERIODIC_DAMAGE_PERCENT));
-
         if (resetPeriodicTimer)
         {
             m_periodicTimer = 0;
@@ -4428,7 +4425,7 @@ void AuraEffect::HandleModMeleeSpeedPct(AuraApplication const* aurApp, uint8 mod
     // Runic corruption proc, not sure if there are other auras with this miscvalue
     if (GetMiscValue() == 5)
         return;
-    
+
     target->ApplyAttackTimePercentMod(BASE_ATTACK,   (float)GetAmount(), apply);
     target->ApplyAttackTimePercentMod(OFF_ATTACK,    (float)GetAmount(), apply);
 }
@@ -5553,17 +5550,6 @@ void AuraEffect::HandleAuraDummy(AuraApplication const* aurApp, uint8 mode, bool
                     caster->ApplySpellImmune(GetId(), IMMUNITY_ID, 94644, apply); break; // Prevent restacking of Shadow Infusion while in dark transformation
                 case 63560: // Dark Transformation
                     target->ApplySpellImmune(GetId(), IMMUNITY_ID, 91342, apply); break; // Prevent restacking of Shadow Infusion while in dark transformation
-                case 57723: // Exhaustion
-                case 57724: // Sated
-                case 80354: // Temporal Displacement
-                case 95809: // Insanity
-                {
-                    target->ApplySpellImmune(GetId(), IMMUNITY_ID, 32182, apply); break; // Heroism
-                    target->ApplySpellImmune(GetId(), IMMUNITY_ID, 2825, apply);  break; // Bloodlust
-                    target->ApplySpellImmune(GetId(), IMMUNITY_ID, 80353, apply); break; // Time Warp
-                    target->ApplySpellImmune(GetId(), IMMUNITY_ID, 90355, apply); break; // Ancient Hysteria
-                    break;
-                }
                 case 57819: // Argent Champion
                 case 57820: // Ebon Champion
                 case 57821: // Champion of the Kirin Tor

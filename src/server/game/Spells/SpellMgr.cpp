@@ -2979,6 +2979,8 @@ void SpellMgr::LoadSpellCustomAttr()
 
         switch (spellInfo->Id)
         {
+            // CATACLYSM SPELLS CHANGES
+            //
             case 79638: // Enhanced Strength
             case 79640: // Enhanced Intellect
                 spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(367);    // 2 hours instead of 1
@@ -3004,6 +3006,91 @@ void SpellMgr::LoadSpellCustomAttr()
             case 28271: // Polymorph (other animal)
                 spellInfo->ProcCharges = 1;
                 break;
+            // Need this otherwise we'll be having multiple chance rolls for judgement.
+            case 85117: // Divine Purpose (Rank 1)
+            case 86172: // Divine Purpose (Rank 2)
+                spellInfo->AttributesEx3 = 0;
+                break;
+            case 90174: // Divine Purpose Proc
+                spellInfo->ProcCharges = 1;
+                break;
+            case 88667: // Holy Word: Sanctuary 3yd Dummy
+                spellInfo->SpellFamilyName = SPELLFAMILY_PRIEST;
+                spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(15);
+                spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(85);
+                break;
+            case 88668: // Holy Word: Sanctuary 3yd Heal
+                spellInfo->SpellFamilyName = SPELLFAMILY_PRIEST;
+                spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(15);
+                break;
+            case 88685: // Holy Word: Sanctuary 6yd Dummy
+            case 88686: // Holy Word: Sanctuary 6yd Heal
+                spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(29);
+                break;
+            case 73510: // Mind Spike
+                spellInfo->Effects[0].TriggerSpell = 0;
+                spellInfo->Effects[2].TargetA = TARGET_UNIT_TARGET_ENEMY;
+                break;
+            case 56641: // Steady Shot
+                spellInfo->Effects[2].TargetA = TARGET_UNIT_CASTER;
+                break;
+            case 87934: // Serpent Spread
+            case 87935:
+                spellInfo->Effects[0].Effect = SPELL_EFFECT_APPLY_AURA;
+                spellInfo->Effects[0].ApplyAuraName = SPELL_AURA_DUMMY;
+                break;
+            case 65156: // Juggernaut Buff
+                spellInfo->AttributesEx3 |=  SPELL_ATTR3_CAN_PROC_WITH_TRIGGERED;
+                break;
+            case 94338: // Sunfire (Eclipse)
+                spellInfo->Effects[0].BasePoints = 93402;
+                break;
+            case 5176:  // Wrath
+            case 2912:  // Starfire
+            case 78674: // Starsurge
+                spellInfo->Effects[1].Effect = SPELL_EFFECT_DUMMY;
+                spellInfo->Effects[1].TargetA = TARGET_UNIT_CASTER;
+                break;
+            // Below =  TO BE CHECKED ONES
+            case 82992: // Crowley's ride vehicle
+                spellInfo->Effects[0].BasePoints = 60683;
+                break;
+            case 81913: case 81914: // Die by the Sword
+                spellInfo->Effects[0].TriggerSpell = 0;
+                break;
+            case 77486: // Shadow orb power
+                spellInfo->Effects[0].TriggerSpell = 0;
+                break;
+            case 33191: case 78228: // Harnessed Shadows
+                spellInfo->Effects[0].TriggerSpell = 0;
+                break;
+            case 80128: // Impending Victory Rank 1
+            case 80129: // Impending Victory Rank 2
+                spellInfo->Effects[0].TriggerSpell = 0;
+                break;
+            case 80979: // Thunderstruck Rank 1
+            case 80980: // Thunderstruck Rank 2
+                spellInfo->Effects[1].TriggerSpell = 0;
+                break;
+            case 84604: // Hold the Line Rank 1
+            case 84621: // Hold the Line Rank 2
+                spellInfo->Effects[0].TriggerSpell = 0;
+                break;
+            case 83359: // Sic 'Em Rank 1
+            case 89388: // Sic 'Em Rank 2
+                spellInfo->ProcCharges = 1;
+                break;
+            case 85084: // Howling Gale
+                spellInfo->Effects[0].TriggerSpell = 85085;
+                break;
+            case 85085: // Howling Gale
+                spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(18); // 15 yard
+                break;
+            case 84101: // Deepholm Intro Taxi
+                spellInfo->Effects[0].Effect = SPELL_EFFECT_DUMMY;
+                break;
+            // ENDOF CATACLYSM SPELLS CHANGES
+            //
             case 1680: // Whirlwind  (Fury)
                 spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry (14);
                 spellInfo->Effects[1].RadiusEntry = sSpellRadiusStore.LookupEntry (14);
@@ -3016,14 +3103,6 @@ void SpellMgr::LoadSpellCustomAttr()
                 break;
             case 42835: // Spout
                 spellInfo->Effects[0].Effect = 0; // remove damage effect, only anim is needed
-                break;
-            // Need this otherwise we'll be having multiple chance rolls for judgement.
-            case 85117: // Divine Purpose (Rank 1)
-            case 86172: // Divine Purpose (Rank 2)
-                spellInfo->AttributesEx3 = 0;
-                break;
-            case 90174: // Divine Purpose Proc
-                spellInfo->ProcCharges = 1;
                 break;
             case 30657: // Quake
                 spellInfo->Effects[0].TriggerSpell = 30571;
@@ -3048,33 +3127,8 @@ void SpellMgr::LoadSpellCustomAttr()
                 spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(14);
                 spellInfo->Effects[1].RadiusEntry = sSpellRadiusStore.LookupEntry(14);
                 break;
-            case 88667: // Holy Word: Sanctuary 3yd Dummy
-                spellInfo->SpellFamilyName = SPELLFAMILY_PRIEST;
-                spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(15);
-                spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(85);
-                break;
-            case 88668: // Holy Word: Sanctuary 3yd Heal
-                spellInfo->SpellFamilyName = SPELLFAMILY_PRIEST;
-                spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(15);
-                break;
-            case 88685: // Holy Word: Sanctuary 6yd Dummy
-            case 88686: // Holy Word: Sanctuary 6yd Heal
-                spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(29);
-                break;
-            case 73510: // Mind Spike
-                spellInfo->Effects[0].TriggerSpell = 0;
-                spellInfo->Effects[2].TargetA = TARGET_UNIT_TARGET_ENEMY;
-                break;
             case 36350: // They Must Burn Bomb Aura (self)
                 spellInfo->Effects[0].TriggerSpell = 36325; // They Must Burn Bomb Drop (DND)
-                break;
-            case 56641: // Steady Shot
-                spellInfo->Effects[2].TargetA = TARGET_UNIT_CASTER;
-                break;
-            case 87934: // Serpent Spread
-            case 87935:
-                spellInfo->Effects[0].Effect = SPELL_EFFECT_APPLY_AURA;
-                spellInfo->Effects[0].ApplyAuraName = SPELL_AURA_DUMMY;
                 break;
             case 49838: // Stop Time
                 spellInfo->AttributesEx3 |= SPELL_ATTR3_NO_INITIAL_AGGRO;
@@ -3092,26 +3146,6 @@ void SpellMgr::LoadSpellCustomAttr()
             case 8494: // Mana Shield (rank 2)
                 // because of bug in dbc
                 spellInfo->ProcChance = 0;
-                break;
-            case 2825:  // Bloodlust
-                spellInfo->ExcludeCasterAuraSpell = 57724; // Sated
-                break;
-            case 80353: // Time Warp
-                spellInfo->ExcludeCasterAuraSpell = 80354; // Temporal Displacement
-                break;
-            case 90355: // Ancient Hysteria
-                spellInfo->ExcludeCasterAuraSpell = 95809; // Insanity
-                break;
-            case 20335: // Heart of the Crusader
-            case 20336:
-            case 20337:
-            case 26573: // Consecration
-                spellInfo->Effects[1].TriggerSpell = 82366;
-                spellInfo->Effects[2].TriggerSpell = 36946;
-                break;
-            case 63320: // Glyph of Life Tap
-            // Entries were not updated after spell effect change, we have to do that manually :/
-                spellInfo->AttributesEx3 |= SPELL_ATTR3_CAN_PROC_WITH_TRIGGERED;
                 break;
             case 59725: // Improved Spell Reflection - aoe aura
                 // Target entry seems to be wrong for this spell :/
@@ -3147,9 +3181,6 @@ void SpellMgr::LoadSpellCustomAttr()
             case 85114:
                 spellInfo->Targets = TARGET_UNIT_TARGET_ENEMY;
                 break;
-            case 31818: // Life Tap
-                spellInfo->Effects[0].Effect = SPELL_EFFECT_ENERGIZE_PCT;
-                break;
             case 41376: // Spite
             case 39992: // Needle Spine
             case 29576: // Multi-Shot
@@ -3166,9 +3197,6 @@ void SpellMgr::LoadSpellCustomAttr()
                 break;
             case 53385: // Divine Storm (Damage)
                 spellInfo->MaxAffectedTargets = 4;
-                break;
-            case 65156: // Juggernaut Buff
-                spellInfo->AttributesEx3 |=  SPELL_ATTR3_CAN_PROC_WITH_TRIGGERED;
                 break;
             case 38310: // Multi-Shot
             case 42005: // Bloodboil
@@ -3192,33 +3220,10 @@ void SpellMgr::LoadSpellCustomAttr()
             case 50312: // Unholy Frenzy
                 spellInfo->MaxAffectedTargets = 15;
                 break;
-            case 81913: case 81914: // Die by the Sword
-                spellInfo->Effects[0].TriggerSpell = 0;
-                break;
-            case 77486: // Shadow orb power
-                spellInfo->Effects[0].TriggerSpell = 0;
-                break;
-            case 33191: case 78228: // Harnessed Shadows
-                spellInfo->Effects[0].TriggerSpell = 0;
-                break;
             case 38794: case 33711: // Murmur's Touch
                 spellInfo->MaxAffectedTargets = 1;
                 spellInfo->Effects[0].TriggerSpell = 33760;
                 break;
-            case 80128: // Impending Victory Rank 1
-            case 80129: // Impending Victory Rank 2
-                spellInfo->Effects[0].TriggerSpell = 0;
-                break;
-            case 80979: // Thunderstruck Rank 1
-            case 80980: // Thunderstruck Rank 2
-                spellInfo->Effects[1].TriggerSpell = 0;
-                break;
-            case 84604: // Hold the Line Rank 1
-            case 84621: // Hold the Line Rank 2
-                spellInfo->Effects[0].TriggerSpell = 0;
-                break;
-            case 83359: // Sic 'Em Rank 1
-            case 89388: // Sic 'Em Rank 2
             case 17941: // Shadow Trance
             case 22008: // Netherwind Focus
             case 31834: // Light's Grace
@@ -3388,34 +3393,13 @@ void SpellMgr::LoadSpellCustomAttr()
             case 50421: // Scent of Blood
                 spellInfo->Effects[0].TriggerSpell = 50422;
                 break;
-            case 85084: // Howling Gale
-                spellInfo->Effects[0].TriggerSpell = 85085;
-                break;
-            case 85085: // Howling Gale
-                spellInfo->Effects[0].RadiusEntry = sSpellRadiusStore.LookupEntry(18); // 15 yard
-                break;
-            case 84101: // Deepholm Intro Taxi
-                spellInfo->Effects[0].Effect = SPELL_EFFECT_DUMMY;
-                break;
             case 50029: // Veteran of the Third War
                 spellInfo->Effects[0].MiscValue = 2;
-                break;
-            case 94338: // Sunfire (Eclipse)
-                spellInfo->Effects[0].BasePoints = 93402;
-                break;
-            case 5176:  // Wrath
-            case 2912:  // Starfire
-            case 78674: // Starsurge
-                spellInfo->Effects[1].Effect = SPELL_EFFECT_DUMMY;
-                spellInfo->Effects[1].TargetA = TARGET_UNIT_CASTER;
                 break;
             case 70728: // Exploit Weakness (needs target selection script)
             case 70840: // Devious Minds (needs target selection script)
                 spellInfo->Effects[0].TargetA = TARGET_UNIT_CASTER;
                 spellInfo->Effects[0].TargetB = TARGET_UNIT_PET;
-                break;
-            case 82992: // Crowley's ride vehicle
-                spellInfo->Effects[0].BasePoints = 60683;
                 break;
             case 70893: // Culling The Herd (needs target selection script)
                 spellInfo->Effects[0].TargetA = TARGET_UNIT_CASTER;
