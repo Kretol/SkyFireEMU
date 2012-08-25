@@ -442,9 +442,11 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
     if (target)
     {
         if (!zoneName.empty())
-            PSendSysMessage(LANG_PINFO_MAP_ONLINE, map->name[locale], zoneName.c_str(), areaName.c_str(), phase);
+            //PSendSysMessage(LANG_PINFO_MAP_ONLINE, map->name[locale], zoneName.c_str(), areaName.c_str(), phase);
+            PSendSysMessage(LANG_PINFO_MAP_ONLINE, "<map>", "<area>", "<zone>", phase);
         else
-            PSendSysMessage(LANG_PINFO_MAP_ONLINE, map->name[locale], areaName.c_str(), "<unknown>", phase);
+            //PSendSysMessage(LANG_PINFO_MAP_ONLINE, map->name[locale], areaName.c_str(), "<unknown>", phase);
+            PSendSysMessage(LANG_PINFO_MAP_ONLINE, "<map>", "<area>", "<unknown>", phase);
     }
     else
         PSendSysMessage(LANG_PINFO_MAP_OFFLINE, map->name[locale], areaName.c_str());

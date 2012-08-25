@@ -313,8 +313,8 @@ ChatCommand* ChatHandler::getCommandTable()
     {
         { "list",           SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMTicketListCommand>,             "", NULL },
         { "onlinelist",     SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMTicketListOnlineCommand>,       "", NULL },
-        { "viewname",       SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMTicketGetByNameCommand>,        "", NULL },
         { "viewid",         SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMTicketGetByIdCommand>,          "", NULL },
+        { "viewname",       SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMTicketGetByNameCommand>,        "", NULL },
         { "close",          SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMTicketCloseByIdCommand>,        "", NULL },
         { "closedlist",     SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMTicketListClosedCommand>,       "", NULL },
         { "escalatedlist",  SEC_GAMEMASTER,     true,  OldHandler<&ChatHandler::HandleGMTicketListEscalatedCommand>,    "", NULL },
@@ -349,16 +349,13 @@ ChatCommand* ChatHandler::getCommandTable()
         { "reset",          SEC_ADMINISTRATOR,  true,  NULL,                                           "", resetCommandTable    },
         { "instance",       SEC_ADMINISTRATOR,  true,  NULL,                                           "", instanceCommandTable },
         { "server",         SEC_ADMINISTRATOR,  true,  NULL,                                           "", serverCommandTable   },
-
         { "channel",        SEC_ADMINISTRATOR, true, NULL,                                             "", channelCommandTable  },
-
         { "pet",            SEC_GAMEMASTER,     false, NULL,                                           "", petCommandTable },
         { "ticket",         SEC_MODERATOR,      false,  NULL,                                          "", ticketCommandTable },
-
         { "aura",           SEC_ADMINISTRATOR,  false, OldHandler<&ChatHandler::HandleAuraCommand>,                "", NULL },
         { "unaura",         SEC_ADMINISTRATOR,  false, OldHandler<&ChatHandler::HandleUnAuraCommand>,              "", NULL },
         { "nameannounce",   SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleNameAnnounceCommand>,        "", NULL },
-        { "gmnameannounce", SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMNameAnnounceCommand>,      "", NULL },
+        { "gmchat",         SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMNameAnnounceCommand>,      "", NULL },
         { "announce",       SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleAnnounceCommand>,            "", NULL },
         { "gmannounce",     SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleGMAnnounceCommand>,          "", NULL },
         { "notify",         SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleNotifyCommand>,              "", NULL },
@@ -401,7 +398,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "maxskill",       SEC_ADMINISTRATOR,  false, OldHandler<&ChatHandler::HandleMaxSkillCommand>,            "", NULL },
         { "setskill",       SEC_ADMINISTRATOR,  false, OldHandler<&ChatHandler::HandleSetSkillCommand>,            "", NULL },
         { "whispers",       SEC_MODERATOR,      false, OldHandler<&ChatHandler::HandleWhispersCommand>,            "", NULL },
-        { "pinfo",          SEC_GAMEMASTER,     true,  OldHandler<&ChatHandler::HandlePInfoCommand>,               "", NULL },
+        { "playerinfo",     SEC_GAMEMASTER,     true,  OldHandler<&ChatHandler::HandlePInfoCommand>,               "", NULL },
         { "respawn",        SEC_ADMINISTRATOR,  false, OldHandler<&ChatHandler::HandleRespawnCommand>,             "", NULL },
         { "send",           SEC_MODERATOR,      true,  NULL,                                           "", sendCommandTable     },
         { "mute",           SEC_MODERATOR,      true,  OldHandler<&ChatHandler::HandleMuteCommand>,                "", NULL },
