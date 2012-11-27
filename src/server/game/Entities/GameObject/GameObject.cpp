@@ -845,6 +845,15 @@ bool GameObject::IsDestructibleBuilding() const
     return gInfo->type == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING;
 }
 
+bool GameObject::IsStaticMO() const
+{
+    // If something is marked as a map object, don't transmit an out of range packet for it.
+    GameObjectTemplate const* gInfo = GetGOInfo();
+    if (!gInfo)
+        return false;
+    return gInfo->type == GAMEOBJECT_TYPE_MAP_OBJECT;
+}
+
 Unit* GameObject::GetOwner() const
 {
     return ObjectAccessor::GetUnit(*this, GetOwnerGUID());
@@ -862,6 +871,9 @@ bool GameObject::IsAlwaysVisibleFor(WorldObject const* seer) const
         return true;
 
     if (IsTransport() || IsDestructibleBuilding())
+        return true;
+
+    if (IsStaticMO())
         return true;
 
     if (!seer)
