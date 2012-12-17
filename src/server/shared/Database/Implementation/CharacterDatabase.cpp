@@ -62,7 +62,7 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     "resettalents_time, trans_x, trans_y, trans_z, trans_o, transguid, extra_flags, at_login, zone, online, death_expire_time, taxi_path, instance_mode_mask, "
     "conquestPoints, totalHonorPoints, totalKills, todayKills, yesterdayKills, chosenTitle, watchedFaction, drunk, "
     "health, power1, power2, power3, power4, power5, power6, power7, power8, power9, power10, instance_id, speccount, activespec, exploredZones, equipmentCache, knownTitles, actionBars, currentpetslot, petSlotUsed, grantableLevels, talentTree FROM characters WHERE guid = ?", CONNECTION_ASYNC)
-    PREPARE_STATEMENT(CHAR_SEL_GROUP_MEMBER, "SELECT guid FROM group_member WHERE memberGuid = ?", CONNECTION_ASYNC)
+    PREPARE_STATEMENT(CHAR_SEL_GROUP_MEMBER, "SELECT guid FROM group_member WHERE memberGuid = ?", CONNECTION_BOTH)
     PREPARE_STATEMENT(CHAR_SEL_CHARACTER_INSTANCE, "SELECT id, permanent, map, difficulty, resettime FROM character_instance LEFT JOIN instance ON instance = id WHERE guid = ?", CONNECTION_ASYNC)
     PREPARE_STATEMENT(CHAR_SEL_CHARACTER_AURAS, "SELECT caster_guid, spell, effect_mask, recalculate_mask, stackcount, amount0, amount1, amount2, "
     "base_amount0, base_amount1, base_amount2, maxduration, remaintime, remaincharges FROM character_aura WHERE guid = ?", CONNECTION_ASYNC)
@@ -337,22 +337,22 @@ void CharacterDatabaseConnection::DoPrepareStatements()
 
     // Creature respawn
     PREPARE_STATEMENT(CHAR_SEL_CREATURE_RESPAWNS, "SELECT guid, respawnTime, instanceId FROM creature_respawn", CONNECTION_SYNCH)
-    PREPARE_STATEMENT(CHAR_REP_CREATURE_RESPAWN, "REPLACE INTO creature_respawn (guid, respawnTime, instanceId) VALUES (?, ?, ?)", CONNECTION_ASYNC)
-    PREPARE_STATEMENT(CHAR_DEL_CREATURE_RESPAWN, "DELETE FROM creature_respawn WHERE guid = ? AND instanceId = ?", CONNECTION_ASYNC)
+    PREPARE_STATEMENT(CHAR_REP_CREATURE_RESPAWNS, "REPLACE INTO creature_respawn (guid, respawnTime, instanceId) VALUES (?, ?, ?)", CONNECTION_ASYNC)
+    PREPARE_STATEMENT(CHAR_DEL_CREATURE_RESPAWNS, "DELETE FROM creature_respawn WHERE guid = ? AND instanceId = ?", CONNECTION_ASYNC)
     PREPARE_STATEMENT(CHAR_DEL_CREATURE_RESPAWN_BY_GUID, "DELETE FROM creature_respawn WHERE guid = ?", CONNECTION_ASYNC)
     PREPARE_STATEMENT(CHAR_DEL_CREATURE_RESPAWN_BY_INSTANCE, "DELETE FROM creature_respawn WHERE instanceId = ?", CONNECTION_ASYNC)
     PREPARE_STATEMENT(CHAR_SEL_MAX_CREATURE_RESPAWNS, "SELECT MAX(respawnTime), instanceId FROM creature_respawn WHERE instanceId > 0 GROUP BY instanceId", CONNECTION_SYNCH)
 
     // Gameobject respawn
     PREPARE_STATEMENT(CHAR_SEL_GO_RESPAWNS, "SELECT guid, respawnTime, instanceId FROM gameobject_respawn", CONNECTION_SYNCH)
-    PREPARE_STATEMENT(CHAR_REP_GO_RESPAWN, "REPLACE INTO gameobject_respawn (guid, respawnTime, instanceId) VALUES (?, ?, ?)", CONNECTION_ASYNC)
-    PREPARE_STATEMENT(CHAR_DEL_GO_RESPAWN, "DELETE FROM gameobject_respawn WHERE guid = ? AND instanceId = ?", CONNECTION_ASYNC)
-    PREPARE_STATEMENT(CHAR_DEL_GO_RESPAWN_BY_INSTANCE, "DELETE FROM gameobject_respawn WHERE instanceId = ?", CONNECTION_ASYNC)
+    PREPARE_STATEMENT(CHAR_REP_GO_RESPAWNS, "REPLACE INTO gameobject_respawn (guid, respawnTime, instanceId) VALUES (?, ?, ?)", CONNECTION_ASYNC)
+    PREPARE_STATEMENT(CHAR_DEL_GO_RESPAWNS, "DELETE FROM gameobject_respawn WHERE guid = ? AND instanceId = ?", CONNECTION_ASYNC)
+    PREPARE_STATEMENT(CHAR_DEL_GO_RESPAWNS_BY_INSTANCE, "DELETE FROM gameobject_respawn WHERE instanceId = ?", CONNECTION_ASYNC)
 
     // GM Tickets
     PREPARE_STATEMENT(CHAR_SEL_GM_TICKETS, "SELECT ticketId, guid, name, message, createTime, mapId, posX, posY, posZ, lastModifiedTime, closedBy, assignedTo, comment, completed, escalated, viewed FROM gm_tickets", CONNECTION_SYNCH)
-    PREPARE_STATEMENT(CHAR_REP_GM_TICKET, "REPLACE INTO gm_tickets (ticketId, guid, name, message, createTime, mapId, posX, posY, posZ, lastModifiedTime, closedBy, assignedTo, comment, completed, escalated, viewed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC)
-    PREPARE_STATEMENT(CHAR_DEL_GM_TICKET, "DELETE FROM gm_tickets WHERE ticketId = ?", CONNECTION_ASYNC)
+    PREPARE_STATEMENT(CHAR_REP_GM_TICKETS, "REPLACE INTO gm_tickets (ticketId, guid, name, message, createTime, mapId, posX, posY, posZ, lastModifiedTime, closedBy, assignedTo, comment, completed, escalated, viewed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC)
+    PREPARE_STATEMENT(CHAR_DEL_GM_TICKETS, "DELETE FROM gm_tickets WHERE ticketId = ?", CONNECTION_ASYNC)
     PREPARE_STATEMENT(CHAR_DEL_PLAYER_GM_TICKETS, "DELETE FROM gm_tickets WHERE guid = ?", CONNECTION_ASYNC)
 
     // GM Survey/subsurvey/lag/bug report
